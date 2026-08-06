@@ -40,7 +40,7 @@ class SslCryptor(sslContext: SSLContext) {
      */
     fun handshake(received: ByteArray?): ByteArray {
         if (received != null && received.isNotEmpty()) append(received)
-        val output = ByteBuffer.allocate(packetSize * 4)
+        var output = ByteBuffer.allocate(packetSize * 4)
         val appBuffer = ByteBuffer.allocate(applicationSize)
         loop@ while (true) {
             when (engine.handshakeStatus) {
@@ -51,7 +51,8 @@ class SslCryptor(sslContext: SSLContext) {
                     if (result.status == SSLEngineResult.Status.CLOSED) break@loop
                 }
                 SSLEngineResult.HandshakeStatus.NEED_WRAP -> {
-                    val result = engine.wrap(EMPTY, ensureRemaining(output))
+                    output = ensureRemaining(output)
+                    val result = engine.wrap(EMPTY, output)
                     if (result.status == SSLEngineResult.Status.CLOSED) break@loop
                 }
                 SSLEngineResult.HandshakeStatus.NEED_TASK -> {
