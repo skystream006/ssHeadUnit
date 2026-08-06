@@ -14,5 +14,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "TabletAA"
+rootProject.name = "ssHeadUnit"
 include(":app")

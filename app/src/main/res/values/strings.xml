@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">TabletAA</string>
+    <string name="app_name">ssHeadUnit</string>
     <string name="status_waiting">Connect a phone with a USB cable to start Android Auto</string>
     <string name="status_switching">Starting Android Auto on the phone…</string>
     <string name="status_starting">Opening projection session…</string>

@@ -14,7 +14,7 @@
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:supportsRtl="true"
-        android:theme="@style/Theme.TabletAA">
+        android:theme="@style/Theme.ssHeadUnit">
 
         <activity
             android:name=".ui.MainActivity"
@@ -22,7 +22,7 @@
             android:exported="true"
             android:launchMode="singleTask"
             android:screenOrientation="landscape"
-            android:theme="@style/Theme.TabletAA">
+            android:theme="@style/Theme.ssHeadUnit">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
