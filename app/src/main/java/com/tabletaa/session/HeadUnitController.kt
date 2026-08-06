@@ -47,35 +47,51 @@ object HeadUnitController : HeadUnitListener {
     var statusListener: ((String, Boolean) -> Unit)? = null
 
     /** Opens a session with a phone that is already in accessory mode. */
-    @Synchronized
     fun start(context: Context, device: UsbDevice) {
-        if (session != null) return
         val manager = context.getSystemService(Context.USB_SERVICE) as UsbManager
-        try {
-            val sslContext = HeadUnitCredentials.createSslContext(context)
-            val link = Aoap.openTransport(manager, device)
-            transport = link
-            val newSession = HeadUnitSession(link, sslContext, config, this)
-            session = newSession
-            publish("Connecting to phone…", connected = false)
-            sessionThread = Thread({ newSession.run() }, "aa-session").apply { start() }
-        } catch (e: Exception) {
-            Log.e(TAG, "Unable to start session", e)
-            publish(e.message ?: "Unable to start session", connected = false)
-            stop()
+        synchronized(this) {
+            if (session != null) return
+            try {
+                val sslContext = HeadUnitCredentials.createSslContext(context)
+                val link = Aoap.openTransport(manager, device)
+                transport = link
+                val newSession = HeadUnitSession(link, sslContext, config, this)
+                session = newSession
+                publish("Connecting to phone…", connected = false)
+                sessionThread = Thread({ newSession.run() }, "aa-session").apply { start() }
+            } catch (e: Exception) {
+                Log.e(TAG, "Unable to start session", e)
+                // The session thread never started, so tearing down inline cannot dead-lock.
+                session = null
+                transport?.close()
+                transport = null
+                isConnected = false
+                publish(e.message ?: "Unable to start session", connected = false)
+            }
         }
     }
 
-    @Synchronized
     fun stop() {
+        // The state is cleared while holding the monitor, but the session thread is joined
+        // without it: the thread reports its shutdown through onDisconnected, which needs it.
+        val session: HeadUnitSession?
+        val thread: Thread?
+        val link: Transport?
+        synchronized(this) {
+            session = this.session
+            thread = sessionThread
+            link = transport
+            this.session = null
+            sessionThread = null
+            transport = null
+        }
         session?.stop()
-        session = null
-        sessionThread?.join(THREAD_JOIN_MS)
-        sessionThread = null
-        transport?.close()
-        transport = null
-        stopVideo()
-        audioPlayer.stopAll()
+        thread?.join(THREAD_JOIN_MS)
+        link?.close()
+        synchronized(this) {
+            stopVideo()
+            audioPlayer.stopAll()
+        }
         isConnected = false
         publish("Disconnected", connected = false)
     }

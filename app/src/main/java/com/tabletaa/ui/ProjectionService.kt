@@ -13,6 +13,7 @@ import android.hardware.usb.UsbManager
 import android.os.Build
 import android.os.IBinder
 import android.os.PowerManager
+import java.util.concurrent.TimeUnit
 import com.tabletaa.R
 import com.tabletaa.session.HeadUnitController
 
@@ -76,10 +77,13 @@ class ProjectionService : Service() {
     private fun acquireWakeLock() {
         if (wakeLock != null) return
         val power = getSystemService(Context.POWER_SERVICE) as PowerManager
-        wakeLock = power.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "TabletAA:session").apply { acquire() }
+        wakeLock = power.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "TabletAA:session")
+            .apply { acquire(WAKE_LOCK_TIMEOUT_MS) }
     }
 
     companion object {
+        /** Safety net so a leaked session can never keep the tablet awake for ever. */
+        private val WAKE_LOCK_TIMEOUT_MS = TimeUnit.HOURS.toMillis(8)
         private const val CHANNEL_ID = "tabletaa-projection"
         private const val NOTIFICATION_ID = 1
 

@@ -63,7 +63,7 @@ object Aoap {
                 Log.i(TAG, "Device does not support AOAP (result=$protocolResult)")
                 return false
             }
-            val protocolVersion = (buffer[1].toInt() and 0xFF shl 8) or (buffer[0].toInt() and 0xFF)
+            val protocolVersion = ((buffer[1].toInt() and 0xFF) shl 8) or (buffer[0].toInt() and 0xFF)
             Log.i(TAG, "AOAP protocol version $protocolVersion")
             if (protocolVersion < 1) return false
 
