@@ -1,0 +1,111 @@
+name: Android APK
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Bump Android version
+        id: version
+        run: |
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import re
+          from pathlib import Path
+
+          build_file = Path("app/build.gradle.kts")
+          text = build_file.read_text()
+
+          code_match = re.search(r"versionCode\s*=\s*(\d+)", text)
+          name_match = re.search(r'versionName\s*=\s*"(\d+)\.(\d{2})\.(\d{2})"', text)
+          if not code_match:
+              raise SystemExit("versionCode not found in app/build.gradle.kts")
+          if not name_match:
+              raise SystemExit("versionName must use xx.yy.zz format, for example 0.01.01")
+
+          version_code = int(code_match.group(1)) + 1
+          major, minor, patch = map(int, name_match.groups())
+          patch += 1
+          if patch > 99:
+              patch = 0
+              minor += 1
+          if minor > 99:
+              minor = 0
+              major += 1
+          version_name = f"{major}.{minor:02d}.{patch:02d}"
+
+          text = re.sub(r"versionCode\s*=\s*\d+", f"versionCode = {version_code}", text, count=1)
+          text = re.sub(r'versionName\s*=\s*"[^"]+"', f'versionName = "{version_name}"', text, count=1)
+          build_file.write_text(text)
+
+          print(f"version_code={version_code}")
+          print(f"version_name={version_name}")
+          PY
+
+      - name: Build APK
+        run: ./gradlew test assembleDebug
+
+      - name: Set APK name
+        id: apk_name
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          pr_number="${{ github.event.pull_request.number }}"
+          if [ -z "$pr_number" ]; then
+            if [ "${{ github.event_name }}" = "push" ]; then
+              pr_number=$(gh pr list \
+                --repo "${{ github.repository }}" \
+                --state all \
+                --search "${{ github.sha }}" \
+                --json number \
+                --jq '.[0].number // empty' 2>/dev/null || true)
+            fi
+          fi
+          if [ -z "$pr_number" ]; then
+            pr_number=$(gh api "repos/${{ github.repository }}/commits/${{ github.sha }}/pulls" \
+              -H "Accept: application/vnd.github+json" \
+              --jq '.[0].number // empty' 2>/dev/null || true)
+          fi
+          if [ -z "$pr_number" ]; then
+            echo "No pull request found for ${{ github.sha }}; using 0" >&2
+            pr_number=0
+          fi
+          echo "apk_name=ssHeadUnit-v${{ steps.version.outputs.version_name }}-pr${pr_number}" >> "$GITHUB_OUTPUT"
+
+      - name: Rename APK
+        run: cp app/build/outputs/apk/debug/app-debug.apk "${{ steps.apk_name.outputs.apk_name }}.apk"
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.apk_name.outputs.apk_name }}
+          path: ${{ steps.apk_name.outputs.apk_name }}.apk
+          if-no-files-found: error
+
+      - name: Commit version bump
+        if: github.event_name != 'pull_request'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/build.gradle.kts
+          git diff --staged --quiet || git commit -m "Bump version to ${{ steps.version.outputs.version_name }}"
+          git push
