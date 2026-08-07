@@ -39,7 +39,7 @@ object Aoap {
     private const val DESCRIPTION = "Android Auto"
     private const val VERSION = "2.0.1"
     private const val URI = "https://www.android.com/auto"
-    private const val SERIAL = "HU-TabletAA"
+    private const val SERIAL = "HU-ssHeadUnit"
 
     fun isInAccessoryMode(device: UsbDevice): Boolean =
         device.vendorId == GOOGLE_VENDOR_ID && ACCESSORY_PRODUCT_IDS.contains(device.productId)

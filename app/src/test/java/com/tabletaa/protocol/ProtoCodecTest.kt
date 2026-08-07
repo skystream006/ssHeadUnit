@@ -13,14 +13,14 @@ class ProtoCodecTest {
         val encoded = ProtoWriter()
             .int32(1, 300)
             .bool(2, true)
-            .string(3, "TabletAA")
+            .string(3, "ssHeadUnit")
             .varint(4, 1_234_567_890_123L)
             .toByteArray()
 
         val reader = ProtoReader(encoded)
         assertEquals(300L, ProtoReader(encoded).findVarint(1))
         assertEquals(1L, ProtoReader(encoded).findVarint(2))
-        assertEquals("TabletAA", String(reader.findBytes(3)!!, Charsets.UTF_8))
+        assertEquals("ssHeadUnit", String(reader.findBytes(3)!!, Charsets.UTF_8))
         assertEquals(1_234_567_890_123L, ProtoReader(encoded).findVarint(4))
     }
 
