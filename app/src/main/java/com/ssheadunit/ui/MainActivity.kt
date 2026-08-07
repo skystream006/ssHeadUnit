@@ -1,11 +1,13 @@
 package com.ssheadunit.ui
 
 import android.app.Activity
+import android.app.AlertDialog
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.ActivityInfo
 import android.hardware.usb.UsbDevice
 import android.hardware.usb.UsbManager
 import android.os.Build
@@ -16,6 +18,7 @@ import android.view.SurfaceHolder
 import android.view.SurfaceView
 import android.view.View
 import android.view.WindowManager
+import android.widget.Button
 import android.widget.TextView
 import com.ssheadunit.R
 import com.ssheadunit.session.HeadUnitController
@@ -29,6 +32,7 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
 
     private lateinit var surfaceView: SurfaceView
     private lateinit var statusView: TextView
+    private lateinit var settingsButton: Button
     private lateinit var usbManager: UsbManager
 
     private val usbReceiver = object : BroadcastReceiver() {
@@ -59,14 +63,18 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
         setContentView(R.layout.activity_main)
         surfaceView = findViewById(R.id.projection_surface)
         statusView = findViewById(R.id.status_text)
+        settingsButton = findViewById(R.id.settings_button)
         surfaceView.holder.addCallback(this)
         usbManager = getSystemService(Context.USB_SERVICE) as UsbManager
+        applyOrientation()
+        settingsButton.setOnClickListener { showSettings() }
         enterImmersiveMode()
 
         HeadUnitController.statusListener = { text, connected ->
             runOnUiThread {
                 statusView.text = text
                 statusView.visibility = if (connected) View.GONE else View.VISIBLE
+                settingsButton.visibility = if (connected) View.GONE else View.VISIBLE
             }
         }
     }
@@ -165,6 +173,36 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
     private fun showStatus(text: String) {
         statusView.text = text
         statusView.visibility = View.VISIBLE
+        settingsButton.visibility = if (HeadUnitController.isConnected) View.GONE else View.VISIBLE
+    }
+
+    private fun showSettings() {
+        val orientations = intArrayOf(
+            ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE,
+            ActivityInfo.SCREEN_ORIENTATION_PORTRAIT,
+        )
+        val currentOrientation = getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
+            .getInt(PREFERENCE_ORIENTATION, ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE)
+        val checkedItem = orientations.indexOf(currentOrientation).coerceAtLeast(0)
+        AlertDialog.Builder(this)
+            .setTitle(R.string.display_orientation)
+            .setSingleChoiceItems(
+                arrayOf(getString(R.string.orientation_landscape), getString(R.string.orientation_portrait)),
+                checkedItem,
+            ) { dialog, which ->
+                getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
+                    .edit()
+                    .putInt(PREFERENCE_ORIENTATION, orientations[which])
+                    .apply()
+                requestedOrientation = orientations[which]
+                dialog.dismiss()
+            }
+            .show()
+    }
+
+    private fun applyOrientation() {
+        requestedOrientation = getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
+            .getInt(PREFERENCE_ORIENTATION, ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE)
     }
 
     private fun enterImmersiveMode() {
@@ -182,5 +220,7 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
     private companion object {
         const val TAG = "MainActivity"
         const val ACTION_USB_PERMISSION = "com.ssheadunit.USB_PERMISSION"
+        const val PREFERENCES_NAME = "settings"
+        const val PREFERENCE_ORIENTATION = "orientation"
     }
 }
