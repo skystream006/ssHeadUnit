@@ -49,15 +49,15 @@ Gradle Plugin. The app itself has no runtime dependencies beyond the Android pla
 
 ## Head unit credentials
 
-A phone only projects to a head unit whose certificate it accepts. ssHeadUnit therefore loads its
-TLS identity from the assets folder and **no credentials are bundled with this repository**:
+A phone only projects to a head unit whose certificate it accepts. On its first load, ssHeadUnit
+creates a passwordless `headunit.p12` TLS identity in its private app storage. You can instead
+provide a custom identity through the assets folder:
 
 * `app/src/main/assets/headunit.p12` – PKCS#12 keystore containing the head unit certificate and
   private key.
-* `app/src/main/assets/headunit.pwd` – the keystore password (optional; empty when the file is
-  absent).
+* `app/src/main/assets/headunit.pwd` – the keystore password (optional; empty when absent).
 
-Without these files the app starts, detects the phone and reports that credentials are missing.
+The generated identity is retained until the app's data is cleared.
 
 ## Usage
 

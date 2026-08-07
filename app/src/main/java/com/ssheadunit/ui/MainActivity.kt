@@ -23,6 +23,7 @@ import android.widget.Button
 import android.widget.TextView
 import com.ssheadunit.R
 import com.ssheadunit.session.HeadUnitController
+import com.ssheadunit.session.HeadUnitCredentials
 import com.ssheadunit.transport.Aoap
 
 /**
@@ -78,6 +79,8 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
         applyOrientation()
         settingsButton.setOnClickListener { showSettings() }
         enterImmersiveMode()
+        runCatching { HeadUnitCredentials.ensureCredentials(applicationContext) }
+            .onFailure { Log.e(TAG, "Unable to create head unit credentials", it) }
 
         HeadUnitController.statusListener = { text, connected ->
             runOnUiThread {
