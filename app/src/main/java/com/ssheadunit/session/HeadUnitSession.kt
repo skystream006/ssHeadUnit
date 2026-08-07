@@ -96,6 +96,9 @@ class HeadUnitSession(
     var phase: SessionPhase = SessionPhase.WAITING_FOR_VERSION
         private set
 
+    /** Guards against re-announcing a phase, while still announcing the very first one. */
+    private var phaseAnnounced = false
+
     /** Runs the session until the link is closed, a watchdog fires or [stop] is called. */
     fun run() {
         running = true
@@ -140,8 +143,9 @@ class HeadUnitSession(
     }
 
     private fun publishPhase(next: SessionPhase) {
-        if (phase == next) return
+        if (phaseAnnounced && phase == next) return
         phase = next
+        phaseAnnounced = true
         listener.onPhase(next)
     }
 
