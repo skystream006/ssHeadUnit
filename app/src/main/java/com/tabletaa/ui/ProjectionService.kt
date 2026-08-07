@@ -77,14 +77,14 @@ class ProjectionService : Service() {
     private fun acquireWakeLock() {
         if (wakeLock != null) return
         val power = getSystemService(Context.POWER_SERVICE) as PowerManager
-        wakeLock = power.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "TabletAA:session")
+        wakeLock = power.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "ssHeadUnit:session")
             .apply { acquire(WAKE_LOCK_TIMEOUT_MS) }
     }
 
     companion object {
         /** Safety net so a leaked session can never keep the tablet awake for ever. */
         private val WAKE_LOCK_TIMEOUT_MS = TimeUnit.HOURS.toMillis(8)
-        private const val CHANNEL_ID = "tabletaa-projection"
+        private const val CHANNEL_ID = "ssheadunit-projection"
         private const val NOTIFICATION_ID = 1
 
         fun start(context: Context, device: UsbDevice) {

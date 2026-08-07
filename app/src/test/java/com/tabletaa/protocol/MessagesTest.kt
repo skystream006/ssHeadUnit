@@ -17,11 +17,11 @@ class MessagesTest {
     @Test
     fun serviceDiscoveryAdvertisesEveryChannel() {
         val payload = Messages.serviceDiscoveryResponse(
-            headUnitName = "TabletAA",
+            headUnitName = "ssHeadUnit",
             carModel = "Universal",
             carYear = "2024",
             carSerial = "0001",
-            manufacturer = "TabletAA",
+            manufacturer = "ssHeadUnit",
             model = "Head Unit",
             softwareBuild = "1",
             softwareVersion = "1.0",
@@ -40,7 +40,7 @@ class MessagesTest {
                 2 -> headUnitName = field.string
             }
         }
-        assertEquals("TabletAA", headUnitName)
+        assertEquals("ssHeadUnit", headUnitName)
         assertEquals(
             listOf(
                 ChannelId.VIDEO,

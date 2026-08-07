@@ -1,4 +1,4 @@
-# TabletAA
+# ssHeadUnit
 
 An Android application that turns a tablet into an **Android Auto head unit** — the same role a
 factory car head unit plays. Plug a phone into the tablet with a USB cable and the phone starts
@@ -49,7 +49,7 @@ Gradle Plugin. The app itself has no runtime dependencies beyond the Android pla
 
 ## Head unit credentials
 
-A phone only projects to a head unit whose certificate it accepts. TabletAA therefore loads its
+A phone only projects to a head unit whose certificate it accepts. ssHeadUnit therefore loads its
 TLS identity from the assets folder and **no credentials are bundled with this repository**:
 
 * `app/src/main/assets/headunit.p12` – PKCS#12 keystore containing the head unit certificate and

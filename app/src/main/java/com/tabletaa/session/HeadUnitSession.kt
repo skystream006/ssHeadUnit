@@ -16,12 +16,12 @@ import javax.net.ssl.SSLContext
 
 /** Static description of the projected head unit, sent during service discovery. */
 data class HeadUnitConfig(
-    val headUnitName: String = "TabletAA",
+    val headUnitName: String = "ssHeadUnit",
     val carModel: String = "Universal",
     val carYear: String = "2024",
-    val carSerial: String = "TabletAA-0001",
-    val manufacturer: String = "TabletAA",
-    val model: String = "TabletAA Head Unit",
+    val carSerial: String = "ssHeadUnit-0001",
+    val manufacturer: String = "ssHeadUnit",
+    val model: String = "ssHeadUnit Head Unit",
     val softwareBuild: String = "1",
     val softwareVersion: String = "1.0",
     val video: Messages.VideoConfig = Messages.VideoConfig(
