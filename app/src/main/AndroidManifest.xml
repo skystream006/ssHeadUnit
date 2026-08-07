@@ -21,7 +21,6 @@
             android:configChanges="orientation|screenSize|keyboardHidden|screenLayout"
             android:exported="true"
             android:launchMode="singleTask"
-            android:screenOrientation="landscape"
             android:theme="@style/Theme.ssHeadUnit">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

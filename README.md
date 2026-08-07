@@ -62,9 +62,10 @@ Without these files the app starts, detects the phone and reports that credentia
 ## Usage
 
 1. Install the APK on the tablet and grant the USB permission when prompted.
-2. Connect the phone. The tablet requests accessory mode, and Android Auto starts on the phone.
-3. The projected UI is shown full screen; touches are forwarded to the phone.
-4. Unplugging the phone ends the session and stops the foreground service.
+2. Before connecting, use **Settings** to select landscape or portrait display orientation.
+3. Connect the phone. The tablet requests accessory mode, and Android Auto starts on the phone.
+4. The projected UI is shown full screen; touches are forwarded to the phone.
+5. Unplugging the phone ends the session and stops the foreground service.
 
 ## Notes
 
