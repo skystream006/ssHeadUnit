@@ -6,7 +6,7 @@ import android.hardware.usb.UsbDeviceConnection
 import android.hardware.usb.UsbEndpoint
 import android.hardware.usb.UsbInterface
 import android.hardware.usb.UsbManager
-import android.util.Log
+import com.ssheadunit.util.HeadUnitLog
 
 /**
  * Android Open Accessory Protocol (AOAP) helper.
@@ -14,13 +14,17 @@ import android.util.Log
  * A factory head unit is the USB host and the phone is the accessory. The tablet does the same:
  * it asks the phone to switch into accessory mode, after which the phone re-enumerates with a
  * Google vendor id and exposes a pair of bulk endpoints used for the Android Auto session.
+ *
+ * Third party wireless adapters (for example the Mayton AutoPro X) sit in the same place as a
+ * phone: they impersonate one over AOAP and bridge to the real phone over Wi-Fi. They enumerate
+ * with their own ids and expose extra interfaces, so device and interface selection is capability
+ * based rather than a list of known ids.
  */
 object Aoap {
 
     private const val TAG = "Aoap"
 
-    const val GOOGLE_VENDOR_ID = 0x18D1
-    private val ACCESSORY_PRODUCT_IDS = intArrayOf(0x2D00, 0x2D01, 0x2D04, 0x2D05)
+    const val GOOGLE_VENDOR_ID = AccessoryDetection.GOOGLE_VENDOR_ID
 
     private const val REQUEST_GET_PROTOCOL = 51
     private const val REQUEST_SEND_STRING = 52
@@ -41,17 +45,76 @@ object Aoap {
     private const val URI = "https://www.android.com/auto"
     private const val SERIAL = "HU-ssHeadUnit"
 
+    /** Outcome of an accessory mode request. */
+    enum class SwitchResult {
+        /** The device accepted the accessory strings; it will re-enumerate shortly. */
+        SWITCHED,
+
+        /** The device did not answer the AOAP requests; it may still be usable as it is. */
+        INCONCLUSIVE,
+
+        /** The device cannot be used at all (it could not even be opened). */
+        UNSUPPORTED
+    }
+
+    /** Describes [device] in the plain form used by [AccessoryDetection]. */
+    fun describe(device: UsbDevice): DeviceDescriptor {
+        val interfaces = (0 until device.interfaceCount).map { index ->
+            val iface = device.getInterface(index)
+            InterfaceDescriptor(
+                index = index,
+                id = iface.id,
+                interfaceClass = iface.interfaceClass,
+                subclass = iface.interfaceSubclass,
+                protocol = iface.interfaceProtocol,
+                endpoints = (0 until iface.endpointCount).map { e ->
+                    val endpoint = iface.getEndpoint(e)
+                    EndpointDescriptor(
+                        address = endpoint.address,
+                        type = endpoint.type,
+                        directionIn = endpoint.direction == UsbConstants.USB_DIR_IN
+                    )
+                }
+            )
+        }
+        return DeviceDescriptor(device.vendorId, device.productId, interfaces)
+    }
+
     fun isInAccessoryMode(device: UsbDevice): Boolean =
-        device.vendorId == GOOGLE_VENDOR_ID && ACCESSORY_PRODUCT_IDS.contains(device.productId)
+        AccessoryDetection.isInAccessoryMode(device.vendorId, device.productId)
+
+    /** True when a projection session can be attempted without switching the device first. */
+    fun isSessionReady(device: UsbDevice): Boolean = AccessoryDetection.isSessionReady(describe(device))
+
+    /** True when [device] exposes an interface that could carry a session. */
+    fun hasUsableInterface(device: UsbDevice): Boolean =
+        AccessoryDetection.sessionInterface(describe(device)) != null
+
+    /** Picks the most likely phone or adapter out of [devices], or null when none qualifies. */
+    fun pickCandidate(devices: Iterable<UsbDevice>): UsbDevice? =
+        AccessoryDetection.pickCandidate(devices, ::describe)
+
+    /** Logs the full descriptor of [device]; the entry point for diagnosing a specific adapter. */
+    fun logDevice(device: UsbDevice, prefix: String) {
+        val descriptor = describe(device)
+        val adapter = AccessoryDetection.knownAdapterName(descriptor)?.let { " ($it)" } ?: ""
+        HeadUnitLog.i(TAG, "$prefix ${descriptor.describe()}$adapter")
+        descriptor.interfaces.forEach { HeadUnitLog.i(TAG, "  ${it.describe()}") }
+    }
 
     /**
      * Requests that [device] switches into accessory mode. On success the device detaches and
      * re-attaches shortly after, which is signalled through the USB attach broadcast.
+     *
+     * A device that does not answer the AOAP control requests is reported as
+     * [SwitchResult.INCONCLUSIVE] rather than as a failure: some adapters answer only on a later
+     * enumeration, and the caller can still try to open the interfaces the device already has.
      */
-    fun requestAccessoryMode(manager: UsbManager, device: UsbDevice): Boolean {
+    fun requestAccessoryMode(manager: UsbManager, device: UsbDevice): SwitchResult {
+        logDevice(device, "Requesting accessory mode on")
         val connection = manager.openDevice(device) ?: run {
-            Log.w(TAG, "Unable to open ${device.deviceName}")
-            return false
+            HeadUnitLog.w(TAG, "Unable to open ${device.deviceName}")
+            return SwitchResult.UNSUPPORTED
         }
         try {
             val buffer = ByteArray(2)
@@ -60,12 +123,12 @@ object Aoap {
                 REQUEST_GET_PROTOCOL, 0, 0, buffer, buffer.size, CONTROL_TIMEOUT_MS
             )
             if (protocolResult < 2) {
-                Log.i(TAG, "Device does not support AOAP (result=$protocolResult)")
-                return false
+                HeadUnitLog.w(TAG, "No AOAP answer (result=$protocolResult); treating as inconclusive")
+                return SwitchResult.INCONCLUSIVE
             }
             val protocolVersion = ((buffer[1].toInt() and 0xFF) shl 8) or (buffer[0].toInt() and 0xFF)
-            Log.i(TAG, "AOAP protocol version $protocolVersion")
-            if (protocolVersion < 1) return false
+            HeadUnitLog.i(TAG, "AOAP protocol version $protocolVersion")
+            if (protocolVersion < 1) return SwitchResult.INCONCLUSIVE
 
             sendString(connection, INDEX_MANUFACTURER, MANUFACTURER)
             sendString(connection, INDEX_MODEL, MODEL)
@@ -78,33 +141,35 @@ object Aoap {
                 UsbConstants.USB_DIR_OUT or UsbConstants.USB_TYPE_VENDOR,
                 REQUEST_START, 0, 0, null, 0, CONTROL_TIMEOUT_MS
             )
-            Log.i(TAG, "Accessory start result $started")
-            return started >= 0
+            HeadUnitLog.i(TAG, "Accessory start result $started")
+            return if (started >= 0) SwitchResult.SWITCHED else SwitchResult.INCONCLUSIVE
         } finally {
             connection.close()
         }
     }
 
-    /** Opens the bulk endpoints of a phone that is already in accessory mode. */
+    /** Opens the bulk endpoints of a phone or adapter that is already in accessory mode. */
     fun openTransport(manager: UsbManager, device: UsbDevice): UsbTransport {
+        logDevice(device, "Opening")
+        val descriptor = describe(device)
+        val selected = AccessoryDetection.sessionInterface(descriptor)
+            ?: throw TransportException("No usable bulk interface on ${device.deviceName}")
+        HeadUnitLog.i(TAG, "Selected ${selected.describe()}")
+
         val connection = manager.openDevice(device)
             ?: throw TransportException("Unable to open USB device ${device.deviceName}")
-        for (i in 0 until device.interfaceCount) {
-            val iface = device.getInterface(i)
-            var input: UsbEndpoint? = null
-            var output: UsbEndpoint? = null
-            for (e in 0 until iface.endpointCount) {
-                val endpoint = iface.getEndpoint(e)
-                if (endpoint.type != UsbConstants.USB_ENDPOINT_XFER_BULK) continue
-                if (endpoint.direction == UsbConstants.USB_DIR_IN) input = endpoint else output = endpoint
-            }
-            if (input != null && output != null && connection.claimInterface(iface, true)) {
-                return UsbTransport(connection, iface, input, output)
-            }
+        val iface: UsbInterface = device.getInterface(selected.index)
+        val input = endpointAt(iface, selected.bulkIn.first().address)
+        val output = endpointAt(iface, selected.bulkOut.first().address)
+        if (input == null || output == null || !connection.claimInterface(iface, true)) {
+            connection.close()
+            throw TransportException("Unable to claim interface ${selected.index} on ${device.deviceName}")
         }
-        connection.close()
-        throw TransportException("No bulk endpoints found on ${device.deviceName}")
+        return UsbTransport(connection, iface, input, output)
     }
+
+    private fun endpointAt(iface: UsbInterface, address: Int): UsbEndpoint? =
+        (0 until iface.endpointCount).map { iface.getEndpoint(it) }.firstOrNull { it.address == address }
 
     private fun sendString(connection: UsbDeviceConnection, index: Int, value: String) {
         val bytes = (value + "\u0000").toByteArray(Charsets.UTF_8)
@@ -117,7 +182,14 @@ object Aoap {
     private const val CONTROL_TIMEOUT_MS = 1000
 }
 
-/** [Transport] backed by the USB bulk endpoints of a phone in accessory mode. */
+/**
+ * [Transport] backed by the USB bulk endpoints of a phone in accessory mode.
+ *
+ * A bulk read that returns a negative result is either a benign timeout or a broken link. The two
+ * are told apart by how long the read took: a read that fails long before its timeout expired did
+ * not wait for data, so the endpoint is stalled or gone. Once enough of those pile up the link is
+ * declared dead instead of letting the session block for ever.
+ */
 class UsbTransport(
     private val connection: UsbDeviceConnection,
     private val iface: UsbInterface,
@@ -127,6 +199,8 @@ class UsbTransport(
 
     @Volatile
     private var closed = false
+
+    private var consecutiveErrors = 0
 
     override fun send(data: ByteArray, timeoutMs: Int) {
         var offset = 0
@@ -142,12 +216,23 @@ class UsbTransport(
 
     override fun receive(buffer: ByteArray, timeoutMs: Int): Int {
         if (closed) throw TransportException("Transport closed")
+        val startedAt = System.nanoTime()
         val read = connection.bulkTransfer(input, buffer, minOf(buffer.size, MAX_TRANSFER), timeoutMs)
-        if (read < 0) {
-            // A negative result is either a timeout or a broken link; the caller retries.
+        if (read >= 0) {
+            consecutiveErrors = 0
+            return read
+        }
+        val elapsedMs = (System.nanoTime() - startedAt) / 1_000_000L
+        if (elapsedMs >= timeoutMs.toLong() * TIMEOUT_TOLERANCE_NUMERATOR / TIMEOUT_TOLERANCE_DENOMINATOR) {
+            // The read waited for (almost) its full timeout: the peer simply had nothing to send.
+            consecutiveErrors = 0
             return 0
         }
-        return read
+        consecutiveErrors++
+        if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+            throw TransportException("USB read failed $consecutiveErrors times in a row; link lost")
+        }
+        return 0
     }
 
     override fun close() {
@@ -159,5 +244,12 @@ class UsbTransport(
 
     private companion object {
         const val MAX_TRANSFER = 16384
+
+        /** A read that returned before 3/4 of its timeout failed rather than timed out. */
+        const val TIMEOUT_TOLERANCE_NUMERATOR = 3L
+        const val TIMEOUT_TOLERANCE_DENOMINATOR = 4L
+
+        /** How many immediate read failures are tolerated before the link is declared dead. */
+        const val MAX_CONSECUTIVE_ERRORS = 10
     }
 }

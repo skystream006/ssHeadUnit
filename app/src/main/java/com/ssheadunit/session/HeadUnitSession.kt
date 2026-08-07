@@ -34,26 +34,50 @@ data class HeadUnitConfig(
     val nightMode: Boolean = false
 )
 
+/**
+ * Stages a session goes through before it is projecting. They are reported to the UI so a stalled
+ * connection can be attributed to a specific step instead of a frozen "connecting" message.
+ */
+enum class SessionPhase(val description: String) {
+    WAITING_FOR_VERSION("Waiting for the phone to start Android Auto…"),
+    HANDSHAKING("Performing the TLS handshake…"),
+    DISCOVERY("Negotiating head unit services…"),
+    PROJECTING("Connected")
+}
+
 /** Events emitted by the session towards the UI and the media pipeline. */
 interface HeadUnitListener {
     fun onConnected() {}
     fun onDisconnected(reason: String) {}
+    fun onPhase(phase: SessionPhase) {}
     fun onVideoData(data: ByteArray, timestampNanos: Long) {}
     fun onAudioStart(channelId: Int, sampleRate: Int, channelCount: Int, bitDepth: Int) {}
     fun onAudioData(channelId: Int, data: ByteArray) {}
     fun onAudioStop(channelId: Int) {}
     fun onLog(message: String) {}
+
+    /** Unexpected but non fatal condition; always reaches logcat. */
+    fun onWarning(message: String) {}
 }
 
 /**
  * Drives a complete Android Auto session: version negotiation, TLS handshake, service discovery,
  * channel setup and the media/input streams.
+ *
+ * Every stage is bounded: if the peer never asks for the protocol version, stalls during the TLS
+ * handshake, or goes quiet after the session was established, the session ends with a descriptive
+ * reason instead of blocking for ever.
  */
 class HeadUnitSession(
     private val transport: Transport,
     private val sslContext: SSLContext,
     private val config: HeadUnitConfig = HeadUnitConfig(),
-    private val listener: HeadUnitListener
+    private val listener: HeadUnitListener,
+    /** Maximum time from opening the link to a completed TLS handshake. */
+    private val handshakeTimeoutMs: Long = HANDSHAKE_TIMEOUT_MS,
+    /** Maximum time an established session may stay silent. */
+    private val idleTimeoutMs: Long = IDLE_TIMEOUT_MS,
+    private val clock: () -> Long = System::currentTimeMillis
 ) {
 
     private val decoder = FrameDecoder()
@@ -68,15 +92,25 @@ class HeadUnitSession(
     @Volatile
     private var authenticated = false
 
-    /** Runs the session until the link is closed or [stop] is called. */
+    @Volatile
+    var phase: SessionPhase = SessionPhase.WAITING_FOR_VERSION
+        private set
+
+    /** Runs the session until the link is closed, a watchdog fires or [stop] is called. */
     fun run() {
         running = true
         val buffer = ByteArray(READ_BUFFER_SIZE)
+        val startedAt = clock()
+        var lastActivityAt = startedAt
+        publishPhase(SessionPhase.WAITING_FOR_VERSION)
         try {
             while (running) {
                 val read = transport.receive(buffer, READ_TIMEOUT_MS)
-                if (read <= 0) continue
-                decoder.feed(buffer, read).forEach { handleFrame(it) }
+                if (read > 0) {
+                    lastActivityAt = clock()
+                    decoder.feed(buffer, read).forEach { handleFrame(it) }
+                }
+                checkWatchdogs(startedAt, lastActivityAt)
             }
         } catch (e: Exception) {
             listener.onDisconnected(e.message ?: e.javaClass.simpleName)
@@ -86,6 +120,29 @@ class HeadUnitSession(
             cryptor.close()
         }
         listener.onDisconnected("session stopped")
+    }
+
+    /**
+     * Ends the session when the handshake takes too long or an established session goes silent.
+     * The thrown exception is turned into [HeadUnitListener.onDisconnected] by [run].
+     */
+    private fun checkWatchdogs(startedAt: Long, lastActivityAt: Long) {
+        val now = clock()
+        val failure = watchdogFailure(
+            authenticated = authenticated,
+            phase = phase,
+            sinceStartMs = now - startedAt,
+            sinceActivityMs = now - lastActivityAt,
+            handshakeTimeoutMs = handshakeTimeoutMs,
+            idleTimeoutMs = idleTimeoutMs
+        )
+        if (failure != null) throw IllegalStateException(failure)
+    }
+
+    private fun publishPhase(next: SessionPhase) {
+        if (phase == next) return
+        phase = next
+        listener.onPhase(next)
     }
 
     fun stop() {
@@ -128,15 +185,23 @@ class HeadUnitSession(
             ChannelId.MEDIA_AUDIO, ChannelId.SPEECH_AUDIO, ChannelId.SYSTEM_AUDIO -> handleAudio(message)
             ChannelId.INPUT -> handleInput(message)
             ChannelId.SENSOR -> handleSensor(message)
-            else -> listener.onLog("Ignoring message ${message.messageId} on ${ChannelId.name(message.channelId)}")
+            else -> listener.onWarning(
+                "Ignoring message 0x%04x on %s".format(message.messageId, ChannelId.name(message.channelId))
+            )
         }
     }
 
     private fun handleControl(message: Message) {
         when (message.messageId) {
             ControlMessage.VERSION_REQUEST -> {
-                listener.onLog("Version request received")
-                sendControl(Messages.versionResponse(PROTOCOL_MAJOR, PROTOCOL_MINOR, Messages.Status.OK), encrypted = false)
+                val offered = Messages.parseVersionRequest(message)
+                val (major, minor) = negotiateVersion(offered)
+                listener.onLog(
+                    "Version request received (offered=${offered?.let { "${it.first}.${it.second}" } ?: "unparsable"}," +
+                        " answering $major.$minor)"
+                )
+                sendControl(Messages.versionResponse(major, minor, Messages.Status.OK), encrypted = false)
+                publishPhase(SessionPhase.HANDSHAKING)
                 val hello = cryptor.startHandshake()
                 if (hello.isNotEmpty()) sendControl(Messages.sslHandshake(hello), encrypted = false)
             }
@@ -147,12 +212,14 @@ class HeadUnitSession(
                     authenticated = true
                     listener.onLog("TLS handshake complete")
                     sendControl(Messages.authComplete(), encrypted = false)
+                    publishPhase(SessionPhase.DISCOVERY)
                     listener.onConnected()
                 }
             }
             ControlMessage.SERVICE_DISCOVERY_REQUEST -> {
                 listener.onLog("Service discovery request received")
                 sendControl(serviceDiscoveryResponse())
+                publishPhase(SessionPhase.PROJECTING)
             }
             ControlMessage.CHANNEL_OPEN_REQUEST -> {
                 val channelId = Messages.parseChannelOpenRequest(message)
@@ -177,7 +244,7 @@ class HeadUnitSession(
                 stop()
             }
             ControlMessage.SHUTDOWN_RESPONSE -> stop()
-            else -> listener.onLog("Unhandled control message 0x%04x".format(message.messageId))
+            else -> listener.onWarning("Unhandled control message 0x%04x".format(message.messageId))
         }
     }
 
@@ -200,7 +267,7 @@ class HeadUnitSession(
             }
             AvMessage.VIDEO_FOCUS_REQUEST ->
                 send(ChannelId.VIDEO, Messages.videoFocusIndication(Messages.parseVideoFocusRequest(message), unrequested = false))
-            else -> listener.onLog("Unhandled video message 0x%04x".format(message.messageId))
+            else -> listener.onWarning("Unhandled video message 0x%04x".format(message.messageId))
         }
     }
 
@@ -227,7 +294,7 @@ class HeadUnitSession(
                 listener.onAudioData(channelId, message.body())
                 acknowledge(channelId)
             }
-            else -> listener.onLog("Unhandled audio message 0x%04x".format(message.messageId))
+            else -> listener.onWarning("Unhandled audio message 0x%04x".format(message.messageId))
         }
     }
 
@@ -287,11 +354,57 @@ class HeadUnitSession(
         }
     }
 
-    private companion object {
+    /**
+     * Answers with a version the peer can understand: the peer's own version when it fits within
+     * what this head unit implements, and the head unit version otherwise.
+     */
+    private fun negotiateVersion(offered: Pair<Int, Int>?): Pair<Int, Int> {
+        if (offered == null) return PROTOCOL_MAJOR to PROTOCOL_MINOR
+        val (major, minor) = offered
+        if (major != PROTOCOL_MAJOR) {
+            listener.onWarning("Peer offered unsupported protocol major $major; answering $PROTOCOL_MAJOR.$PROTOCOL_MINOR")
+            return PROTOCOL_MAJOR to PROTOCOL_MINOR
+        }
+        return PROTOCOL_MAJOR to minOf(minor, PROTOCOL_MINOR)
+    }
+
+    companion object {
         const val PROTOCOL_MAJOR = 1
         const val PROTOCOL_MINOR = 1
-        const val MAX_UNACKED = 1
-        const val READ_BUFFER_SIZE = 16384
-        const val READ_TIMEOUT_MS = 1000
+
+        /** Time allowed from opening the link to a completed TLS handshake. */
+        const val HANDSHAKE_TIMEOUT_MS = 30_000L
+
+        /** Time an established session may stay completely silent. */
+        const val IDLE_TIMEOUT_MS = 30_000L
+
+        private const val MAX_UNACKED = 1
+        private const val READ_BUFFER_SIZE = 16384
+        private const val READ_TIMEOUT_MS = 1000
     }
+}
+
+/**
+ * Decides whether a session has stalled.
+ *
+ * Before the TLS handshake completes the whole connection is bounded by `handshakeTimeoutMs`, so a
+ * peer that never sends a version request, or that stops answering during the handshake, cannot
+ * keep the head unit waiting. Afterwards the session only has to stay alive: any frame, including
+ * a ping, resets the idle timer.
+ *
+ * Returns the reason the session should end, or null when it is still healthy.
+ */
+internal fun watchdogFailure(
+    authenticated: Boolean,
+    phase: SessionPhase,
+    sinceStartMs: Long,
+    sinceActivityMs: Long,
+    handshakeTimeoutMs: Long,
+    idleTimeoutMs: Long
+): String? = when {
+    !authenticated && sinceStartMs >= handshakeTimeoutMs ->
+        "Timed out after ${handshakeTimeoutMs / 1000}s: ${phase.description.trimEnd('…')}"
+    authenticated && sinceActivityMs >= idleTimeoutMs ->
+        "No data from the phone for ${idleTimeoutMs / 1000}s"
+    else -> null
 }

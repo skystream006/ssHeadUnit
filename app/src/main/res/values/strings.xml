@@ -5,10 +5,17 @@
     <string name="status_switching">Starting Android Auto on the phone…</string>
     <string name="status_starting">Opening projection session…</string>
     <string name="status_permission_denied">USB permission denied</string>
+    <string name="status_waiting_accessory">Waiting for the phone or adapter to reconnect…</string>
+    <string name="status_no_candidate">No phone or Android Auto adapter found on the USB port</string>
     <string name="status_not_supported">This device does not support Android Auto projection</string>
     <string name="notification_running">Android Auto projection is running</string>
     <string name="settings">Settings</string>
     <string name="display_orientation">Display orientation</string>
     <string name="orientation_landscape">Landscape</string>
     <string name="orientation_portrait">Portrait</string>
+    <string name="debug_logging">Debug logging</string>
+    <string name="debug_logging_on">Debug logging: on</string>
+    <string name="debug_logging_off">Debug logging: off</string>
+    <string name="enabled">On</string>
+    <string name="disabled">Off</string>
 </resources>
