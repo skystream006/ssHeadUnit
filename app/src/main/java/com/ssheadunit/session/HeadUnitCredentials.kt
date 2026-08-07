@@ -127,17 +127,20 @@ object HeadUnitCredentials {
 
     private fun objectIdentifier(value: String): ByteArray {
         val parts = value.split('.').map(String::toLong)
-        val encoded = mutableListOf((parts[0] * 40 + parts[1]).toByte())
-        parts.drop(2).forEach { part ->
-            val bytes = mutableListOf((part and 0x7F).toByte())
-            var remaining = part shr 7
-            while (remaining > 0) {
-                bytes.add(0, ((remaining and 0x7F) or 0x80).toByte())
-                remaining = remaining shr 7
-            }
-            encoded += bytes
-        }
+        val encoded = mutableListOf<Byte>()
+        appendBase128(encoded, parts[0] * 40 + parts[1])
+        parts.drop(2).forEach { appendBase128(encoded, it) }
         return der(0x06, encoded.toByteArray())
+    }
+
+    private fun appendBase128(destination: MutableList<Byte>, value: Long) {
+        val bytes = mutableListOf((value and 0x7F).toByte())
+        var remaining = value shr 7
+        while (remaining > 0) {
+            bytes.add(0, ((remaining and 0x7F) or 0x80).toByte())
+            remaining = remaining shr 7
+        }
+        destination += bytes
     }
 
     private fun utf8String(value: String) = der(0x0C, value.toByteArray(Charsets.UTF_8))
