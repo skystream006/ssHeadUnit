@@ -11,8 +11,8 @@ android {
         applicationId = "com.ssheadunit"
         minSdk = 24
         targetSdk = 35
-        versionCode = 6
-        versionName = "0.01.06"
+        versionCode = 7
+        versionName = "0.01.07"
     }
 
     signingConfigs {
