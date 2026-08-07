@@ -60,11 +60,10 @@ class ProjectionService : Service() {
             this, 0, Intent(this, MainActivity::class.java),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
-        @Suppress("DEPRECATION")
         val notificationBuilder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             Notification.Builder(this, CHANNEL_ID)
         } else {
-            Notification.Builder(this)
+            legacyNotificationBuilder()
         }
         val notification: Notification = notificationBuilder
             .setContentTitle(getString(R.string.app_name))
@@ -79,6 +78,9 @@ class ProjectionService : Service() {
             startForeground(NOTIFICATION_ID, notification)
         }
     }
+
+    @Suppress("DEPRECATION")
+    private fun legacyNotificationBuilder(): Notification.Builder = Notification.Builder(this)
 
     private fun acquireWakeLock() {
         if (wakeLock != null) return
