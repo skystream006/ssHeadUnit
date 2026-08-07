@@ -60,7 +60,13 @@ class ProjectionService : Service() {
             this, 0, Intent(this, MainActivity::class.java),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
-        val notification: Notification = Notification.Builder(this, CHANNEL_ID)
+        @Suppress("DEPRECATION")
+        val notificationBuilder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            Notification.Builder(this, CHANNEL_ID)
+        } else {
+            Notification.Builder(this)
+        }
+        val notification: Notification = notificationBuilder
             .setContentTitle(getString(R.string.app_name))
             .setContentText(getString(R.string.notification_running))
             .setSmallIcon(android.R.drawable.stat_sys_data_bluetooth)
