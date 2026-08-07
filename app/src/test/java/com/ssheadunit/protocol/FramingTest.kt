@@ -1,4 +1,4 @@
-package com.tabletaa.protocol
+package com.ssheadunit.protocol
 
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals

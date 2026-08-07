@@ -1,10 +1,10 @@
-package com.tabletaa.av
+package com.ssheadunit.av
 
 import android.media.AudioAttributes
 import android.media.AudioFormat
 import android.media.AudioTrack
 import android.util.Log
-import com.tabletaa.protocol.ChannelId
+import com.ssheadunit.protocol.ChannelId
 
 /**
  * Plays the PCM streams the phone sends on the media, speech and system audio channels.

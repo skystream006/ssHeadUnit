@@ -1,12 +1,12 @@
-package com.tabletaa.session
+package com.ssheadunit.session
 
-import com.tabletaa.protocol.ChannelId
-import com.tabletaa.protocol.ControlMessage
-import com.tabletaa.protocol.Frame
-import com.tabletaa.protocol.FrameDecoder
-import com.tabletaa.protocol.ProtoWriter
-import com.tabletaa.protocol.withMessageId
-import com.tabletaa.transport.Transport
+import com.ssheadunit.protocol.ChannelId
+import com.ssheadunit.protocol.ControlMessage
+import com.ssheadunit.protocol.Frame
+import com.ssheadunit.protocol.FrameDecoder
+import com.ssheadunit.protocol.ProtoWriter
+import com.ssheadunit.protocol.withMessageId
+import com.ssheadunit.transport.Transport
 import java.io.ByteArrayOutputStream
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit

@@ -1,4 +1,4 @@
-package com.tabletaa.protocol
+package com.ssheadunit.protocol
 
 /**
  * Builders and parsers for the Android Auto protocol messages the head unit needs to speak.

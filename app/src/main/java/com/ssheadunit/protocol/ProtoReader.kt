@@ -1,4 +1,4 @@
-package com.tabletaa.protocol
+package com.ssheadunit.protocol
 
 /**
  * Minimal protocol buffers (proto2 wire format) reader.

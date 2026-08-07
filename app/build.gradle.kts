@@ -4,11 +4,11 @@ plugins {
 }
 
 android {
-    namespace = "com.tabletaa"
+    namespace = "com.ssheadunit"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.tabletaa"
+        applicationId = "com.ssheadunit"
         minSdk = 24
         targetSdk = 35
         versionCode = 5

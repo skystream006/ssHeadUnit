@@ -1,4 +1,4 @@
-package com.tabletaa.ui
+package com.ssheadunit.ui
 
 import android.app.Notification
 import android.app.NotificationChannel
@@ -14,8 +14,8 @@ import android.os.Build
 import android.os.IBinder
 import android.os.PowerManager
 import java.util.concurrent.TimeUnit
-import com.tabletaa.R
-import com.tabletaa.session.HeadUnitController
+import com.ssheadunit.R
+import com.ssheadunit.session.HeadUnitController
 
 /**
  * Foreground service that keeps the projection session alive while the phone is plugged in,

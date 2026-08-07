@@ -24,11 +24,11 @@ A car head unit is the USB *host* and the phone is the *accessory*:
 
 | Path | Purpose |
 | --- | --- |
-| `app/src/main/java/com/tabletaa/transport` | USB host transport and AOAP accessory-mode switch |
-| `app/src/main/java/com/tabletaa/protocol` | Frame codec, minimal protobuf codec, message builders, TLS layer |
-| `app/src/main/java/com/tabletaa/session`  | Session state machine, controller, credentials |
-| `app/src/main/java/com/tabletaa/av`       | H.264 decoding (`MediaCodec`) and PCM playback (`AudioTrack`) |
-| `app/src/main/java/com/tabletaa/ui`       | Full screen projection activity and foreground service |
+| `app/src/main/java/com/ssheadunit/transport` | USB host transport and AOAP accessory-mode switch |
+| `app/src/main/java/com/ssheadunit/protocol` | Frame codec, minimal protobuf codec, message builders, TLS layer |
+| `app/src/main/java/com/ssheadunit/session`  | Session state machine, controller, credentials |
+| `app/src/main/java/com/ssheadunit/av`       | H.264 decoding (`MediaCodec`) and PCM playback (`AudioTrack`) |
+| `app/src/main/java/com/ssheadunit/ui`       | Full screen projection activity and foreground service |
 | `app/src/test`                            | JVM unit tests for the protocol layer |
 
 ## Building

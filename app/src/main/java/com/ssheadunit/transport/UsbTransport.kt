@@ -1,4 +1,4 @@
-package com.tabletaa.transport
+package com.ssheadunit.transport
 
 import android.hardware.usb.UsbConstants
 import android.hardware.usb.UsbDevice

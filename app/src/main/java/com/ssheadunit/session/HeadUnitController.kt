@@ -1,4 +1,4 @@
-package com.tabletaa.session
+package com.ssheadunit.session
 
 import android.content.Context
 import android.hardware.usb.UsbDevice
@@ -6,11 +6,11 @@ import android.hardware.usb.UsbManager
 import android.util.Log
 import android.view.MotionEvent
 import android.view.Surface
-import com.tabletaa.av.AudioPlayer
-import com.tabletaa.av.VideoRenderer
-import com.tabletaa.protocol.Messages
-import com.tabletaa.transport.Aoap
-import com.tabletaa.transport.Transport
+import com.ssheadunit.av.AudioPlayer
+import com.ssheadunit.av.VideoRenderer
+import com.ssheadunit.protocol.Messages
+import com.ssheadunit.transport.Aoap
+import com.ssheadunit.transport.Transport
 
 /**
  * Single place that owns the live projection session: the USB link, the protocol session and the
