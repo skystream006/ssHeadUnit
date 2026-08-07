@@ -29,6 +29,7 @@ A car head unit is the USB *host* and the phone is the *accessory*:
 | `app/src/main/java/com/ssheadunit/session`  | Session state machine, controller, credentials |
 | `app/src/main/java/com/ssheadunit/av`       | H.264 decoding (`MediaCodec`) and PCM playback (`AudioTrack`) |
 | `app/src/main/java/com/ssheadunit/ui`       | Full screen projection activity and foreground service |
+| `app/src/main/java/com/ssheadunit/util`     | Diagnostic logging switch |
 | `app/src/test`                            | JVM unit tests for the protocol layer |
 
 ## Building
@@ -62,13 +63,42 @@ The generated identity is retained until the app's data is cleared.
 ## Usage
 
 1. Install the APK on the tablet and grant the USB permission when prompted.
-2. Before connecting, use **Settings** to select landscape or portrait display orientation.
+2. Before connecting, use **Settings** to select landscape or portrait display orientation, or to
+   turn on debug logging.
 3. Connect the phone. The tablet requests accessory mode, and Android Auto starts on the phone.
 4. The projected UI is shown full screen; touches are forwarded to the phone.
 5. Unplugging the phone ends the session and stops the foreground service.
 
+## Third party wireless adapters
+
+Wireless Android Auto dongles (for example the Mayton **AutoPro X**) plug into the USB port of a
+head unit and *impersonate a phone*: they speak AOAP towards the head unit and bridge to the real
+phone over Wi-Fi and Bluetooth. From this app's point of view they are just another accessory, so
+no separate protocol is needed — but they enumerate differently from a phone:
+
+* They appear under their own vendor and product ids rather than a Google one. The ids published
+  by third party research for this adapter family are `05ac:12a8` (normal mode) and `0525:a4a7`
+  (CDC/A2A reset mode); both are in `usb_device_filter.xml`, but they come from a sibling model and
+  may differ per unit.
+* They reboot and re-enumerate after accepting the accessory strings, sometimes as a different USB
+  device, which the app now waits for explicitly.
+* They can expose several interfaces (a CDC serial one among them), so the interface that carries
+  the session is selected by capability — an AOAP style vendor specific interface with one bulk IN
+  and one bulk OUT endpoint is preferred — rather than by taking the first bulk pair.
+
+Because of this, device detection is capability based and the ids above are only a fast path. There
+is **no vendor published protocol specification** for these adapters, and no official support: the
+adapter also validates the head unit certificate, so a generated `headunit.p12` may still be
+rejected. Every stage of the session is now bounded by a timeout, so an adapter that stops
+answering ends the session with a reason on screen instead of hanging.
+
+If a connection still fails, turn on **Settings → Debug logging** and capture logcat: the USB
+descriptors, the selected interface, the negotiated protocol version, the session phase and the
+watchdog that fired are all logged.
+
 ## Notes
 
+* Debug logging is off by default; warnings and errors are always logged.
 * Video is projected at 1280x720 by default; the resolution, DPI and head unit identity can be
   changed in `HeadUnitConfig` / `HeadUnitController`.
 * The wireless (Wi-Fi) projection transport is not implemented; the app uses USB only.
