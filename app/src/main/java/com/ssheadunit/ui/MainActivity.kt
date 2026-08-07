@@ -41,7 +41,15 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
                     if (granted && device != null) {
                         connect(device)
                     } else {
-                        showStatus(getString(R.string.status_permission_denied))
+                        // The user may have denied permission for the wrong device if several
+                        // peripherals are attached at once (e.g. through a USB hub). Try any
+                        // other candidate still plugged in before giving up.
+                        val other = usbManager.deviceList.values.firstOrNull { it.deviceId != device?.deviceId }
+                        if (other != null) {
+                            connect(other)
+                        } else {
+                            showStatus(getString(R.string.status_permission_denied))
+                        }
                     }
                 }
                 UsbManager.ACTION_USB_DEVICE_ATTACHED -> device?.let { connect(it) }
@@ -126,12 +134,23 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
             @Suppress("DEPRECATION")
             it.getParcelableExtra<UsbDevice>(UsbManager.EXTRA_DEVICE)
         }
-        val device = attached ?: usbManager.deviceList.values.firstOrNull()
+        val device = attached ?: pickCandidateDevice()
         if (device == null) {
             showStatus(getString(R.string.status_waiting))
             return
         }
         connect(device)
+    }
+
+    /**
+     * Picks the most likely phone out of every attached USB device. When several peripherals
+     * share the same OTG port (e.g. through a hub) a device already switched into accessory mode
+     * is preferred, since that is unambiguously the phone; otherwise the first attached device is
+     * used as a best effort.
+     */
+    private fun pickCandidateDevice(): UsbDevice? {
+        val devices = usbManager.deviceList.values
+        return devices.firstOrNull { Aoap.isInAccessoryMode(it) } ?: devices.firstOrNull()
     }
 
     private fun connect(device: UsbDevice) {
