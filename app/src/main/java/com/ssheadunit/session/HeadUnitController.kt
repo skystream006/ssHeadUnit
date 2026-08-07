@@ -3,7 +3,6 @@ package com.ssheadunit.session
 import android.content.Context
 import android.hardware.usb.UsbDevice
 import android.hardware.usb.UsbManager
-import android.util.Log
 import android.view.MotionEvent
 import android.view.Surface
 import com.ssheadunit.av.AudioPlayer
@@ -11,6 +10,7 @@ import com.ssheadunit.av.VideoRenderer
 import com.ssheadunit.protocol.Messages
 import com.ssheadunit.transport.Aoap
 import com.ssheadunit.transport.Transport
+import com.ssheadunit.util.HeadUnitLog
 
 /**
  * Single place that owns the live projection session: the USB link, the protocol session and the
@@ -60,7 +60,7 @@ object HeadUnitController : HeadUnitListener {
                 publish("Connecting to phone…", connected = false)
                 sessionThread = Thread({ newSession.run() }, "aa-session").apply { start() }
             } catch (e: Exception) {
-                Log.e(TAG, "Unable to start session", e)
+                HeadUnitLog.e(TAG, "Unable to start session", e)
                 // The session thread never started, so tearing down inline cannot dead-lock.
                 session = null
                 transport?.close()
@@ -133,8 +133,13 @@ object HeadUnitController : HeadUnitListener {
         synchronized(this) { startVideoIfReady() }
     }
 
+    override fun onPhase(phase: SessionPhase) {
+        HeadUnitLog.i(TAG, "Session phase: $phase")
+        if (phase != SessionPhase.PROJECTING) publish(phase.description, connected = isConnected)
+    }
+
     override fun onDisconnected(reason: String) {
-        Log.i(TAG, "Session ended: $reason")
+        HeadUnitLog.w(TAG, "Session ended: $reason")
         isConnected = false
         publish("Disconnected: $reason", connected = false)
         synchronized(this) {
@@ -160,7 +165,11 @@ object HeadUnitController : HeadUnitListener {
     }
 
     override fun onLog(message: String) {
-        Log.d(TAG, message)
+        HeadUnitLog.d(TAG, message)
+    }
+
+    override fun onWarning(message: String) {
+        HeadUnitLog.w(TAG, message)
     }
 
     // --- internals ----------------------------------------------------------------------------
@@ -170,7 +179,7 @@ object HeadUnitController : HeadUnitListener {
         if (videoStarted || !isConnected || !target.isValid) return
         runCatching { videoRenderer.start(target, VIDEO_WIDTH, VIDEO_HEIGHT) }
             .onSuccess { videoStarted = true }
-            .onFailure { Log.e(TAG, "Unable to start video decoder", it) }
+            .onFailure { HeadUnitLog.e(TAG, "Unable to start video decoder", it) }
     }
 
     private fun stopVideo() {

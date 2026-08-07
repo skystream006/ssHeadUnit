@@ -100,6 +100,24 @@ object Messages {
         return withMessageId(ControlMessage.VERSION_RESPONSE, body)
     }
 
+    /**
+     * Version offered by the peer: two big endian 16 bit values (major, minor). Returns null when
+     * the body does not look like a version pair, so an unexpected encoding falls back to the
+     * head unit's own version instead of answering with nonsense.
+     */
+    fun parseVersionRequest(message: Message): Pair<Int, Int>? {
+        val body = message.body()
+        if (body.size < 4) return null
+        val major = ((body[0].toInt() and 0xFF) shl 8) or (body[1].toInt() and 0xFF)
+        val minor = ((body[2].toInt() and 0xFF) shl 8) or (body[3].toInt() and 0xFF)
+        if (major !in 1..MAX_PROTOCOL_MAJOR || minor !in 0..MAX_PROTOCOL_MINOR) return null
+        return major to minor
+    }
+
+    /** Highest values still considered a plausible protocol version. */
+    private const val MAX_PROTOCOL_MAJOR = 8
+    private const val MAX_PROTOCOL_MINOR = 64
+
     fun sslHandshake(handshakeData: ByteArray): ByteArray =
         withMessageId(ControlMessage.SSL_HANDSHAKE, ProtoWriter().bytes(1, handshakeData).toByteArray())
 

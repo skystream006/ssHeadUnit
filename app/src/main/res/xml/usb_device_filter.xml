@@ -1,8 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Phones already switched into Android Open Accessory mode. -->
+    <!-- Phones and wireless adapters already switched into Android Open Accessory mode. -->
     <usb-device vendor-id="6353" product-id="11520" />
     <usb-device vendor-id="6353" product-id="11521" />
+    <usb-device vendor-id="6353" product-id="11522" />
+    <usb-device vendor-id="6353" product-id="11523" />
     <usb-device vendor-id="6353" product-id="11524" />
     <usb-device vendor-id="6353" product-id="11525" />
+    <!-- Third party wireless adapters (AutoPro X style) before they switch: 05ac:12a8. -->
+    <usb-device vendor-id="1452" product-id="4776" />
+    <!-- The same adapters in their CDC/A2A reset mode: 0525:a4a7. -->
+    <usb-device vendor-id="1317" product-id="42151" />
 </resources>

@@ -16,6 +16,7 @@ import android.os.PowerManager
 import java.util.concurrent.TimeUnit
 import com.ssheadunit.R
 import com.ssheadunit.session.HeadUnitController
+import com.ssheadunit.util.HeadUnitLog
 
 /**
  * Foreground service that keeps the projection session alive while the phone is plugged in,
@@ -28,6 +29,7 @@ class ProjectionService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        HeadUnitLog.load(applicationContext)
         startForegroundCompat()
         val device: UsbDevice? = intent?.let {
             @Suppress("DEPRECATION")

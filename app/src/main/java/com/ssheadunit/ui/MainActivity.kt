@@ -13,7 +13,6 @@ import android.hardware.usb.UsbDevice
 import android.hardware.usb.UsbManager
 import android.os.Build
 import android.os.Bundle
-import android.util.Log
 import android.view.MotionEvent
 import android.view.SurfaceHolder
 import android.view.SurfaceView
@@ -25,6 +24,7 @@ import com.ssheadunit.R
 import com.ssheadunit.session.HeadUnitController
 import com.ssheadunit.session.HeadUnitCredentials
 import com.ssheadunit.transport.Aoap
+import com.ssheadunit.util.HeadUnitLog
 
 /**
  * Full screen projection surface. The tablet behaves like the display of a factory head unit:
@@ -36,6 +36,9 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
     private lateinit var statusView: TextView
     private lateinit var settingsButton: Button
     private lateinit var usbManager: UsbManager
+
+    @Volatile
+    private var switching = false
 
     private val usbReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -50,7 +53,9 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
                         // The user may have denied permission for the wrong device if several
                         // peripherals are attached at once (e.g. through a USB hub). Try any
                         // other candidate still plugged in before giving up.
-                        val other = usbManager.deviceList.values.firstOrNull { it.deviceId != device?.deviceId }
+                        val other = Aoap.pickCandidate(
+                            usbManager.deviceList.values.filter { it.deviceId != device?.deviceId }
+                        )
                         if (other != null) {
                             connect(other)
                         } else {
@@ -79,8 +84,9 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
         applyOrientation()
         settingsButton.setOnClickListener { showSettings() }
         enterImmersiveMode()
+        HeadUnitLog.load(applicationContext)
         runCatching { HeadUnitCredentials.ensureCredentials(applicationContext) }
-            .onFailure { Log.e(TAG, "Unable to create head unit credentials", it) }
+            .onFailure { HeadUnitLog.e(TAG, "Unable to create head unit credentials", it) }
 
         HeadUnitController.statusListener = { text, connected ->
             runOnUiThread {
@@ -153,21 +159,25 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
         }
         val device = attached ?: pickCandidateDevice()
         if (device == null) {
-            showStatus(getString(R.string.status_waiting))
+            val attachedCount = usbManager.deviceList.size
+            showStatus(
+                if (attachedCount == 0) getString(R.string.status_waiting) else getString(R.string.status_no_candidate)
+            )
             return
         }
         connect(device)
     }
 
     /**
-     * Picks the most likely phone out of every attached USB device. When several peripherals
-     * share the same OTG port (e.g. through a hub) a device already switched into accessory mode
-     * is preferred, since that is unambiguously the phone; otherwise the first attached device is
-     * used as a best effort.
+     * Picks the most likely phone or wireless adapter out of every attached USB device. Devices
+     * are ranked (accessory mode ids, then an AOAP accessory interface, then a known adapter id,
+     * then any usable bulk interface) and a device that qualifies for none of those is never
+     * picked, so an unrelated peripheral behind a hub cannot silently take the session.
      */
     private fun pickCandidateDevice(): UsbDevice? {
         val devices = usbManager.deviceList.values
-        return devices.firstOrNull { Aoap.isInAccessoryMode(it) } ?: devices.firstOrNull()
+        devices.forEach { Aoap.logDevice(it, "Attached") }
+        return Aoap.pickCandidate(devices)
     }
 
     private fun connect(device: UsbDevice) {
@@ -175,19 +185,65 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
             requestPermission(device)
             return
         }
-        if (Aoap.isInAccessoryMode(device)) {
-            showStatus(getString(R.string.status_starting))
-            ProjectionService.start(this, device)
+        Aoap.logDevice(device, "Connecting to")
+        if (Aoap.isSessionReady(device)) {
+            startSession(device)
             return
         }
+        if (switching) return
+        switching = true
         showStatus(getString(R.string.status_switching))
-        Thread {
-            val switched = Aoap.requestAccessoryMode(usbManager, device)
-            Log.i(TAG, "Accessory mode requested, result=$switched")
-            if (!switched) {
-                runOnUiThread { showStatus(getString(R.string.status_not_supported)) }
+        Thread({ switchToAccessoryMode(device) }, "aa-switch").start()
+    }
+
+    /**
+     * Switches [device] into accessory mode and waits for it to come back.
+     *
+     * A wireless adapter reboots when it accepts the accessory strings, so the device that later
+     * carries the session is a different USB device: the re-enumeration is awaited explicitly
+     * instead of relying on the attach broadcast alone. An adapter that does not answer the AOAP
+     * requests at all is not written off either, as long as it exposes a usable bulk interface.
+     */
+    private fun switchToAccessoryMode(device: UsbDevice) {
+        try {
+            val result = Aoap.requestAccessoryMode(usbManager, device)
+            HeadUnitLog.i(TAG, "Accessory mode requested, result=$result")
+            when (result) {
+                Aoap.SwitchResult.UNSUPPORTED -> {
+                    runOnUiThread { showStatus(getString(R.string.status_not_supported)) }
+                    return
+                }
+                Aoap.SwitchResult.SWITCHED, Aoap.SwitchResult.INCONCLUSIVE -> Unit
             }
-        }.start()
+            runOnUiThread { showStatus(getString(R.string.status_waiting_accessory)) }
+            val ready = awaitAccessoryDevice()
+            when {
+                ready != null -> runOnUiThread { connect(ready) }
+                result == Aoap.SwitchResult.INCONCLUSIVE && Aoap.hasUsableInterface(device) -> {
+                    // The device never answered AOAP but still offers a bulk pair: try it anyway.
+                    HeadUnitLog.w(TAG, "No accessory device appeared; trying ${device.deviceName} as is")
+                    runOnUiThread { startSession(device) }
+                }
+                else -> runOnUiThread { showStatus(getString(R.string.status_not_supported)) }
+            }
+        } finally {
+            switching = false
+        }
+    }
+
+    /** Polls the attached devices until one is ready for a session or the wait times out. */
+    private fun awaitAccessoryDevice(): UsbDevice? {
+        val deadline = System.currentTimeMillis() + RE_ENUMERATION_TIMEOUT_MS
+        while (System.currentTimeMillis() < deadline) {
+            usbManager.deviceList.values.firstOrNull { Aoap.isSessionReady(it) }?.let { return it }
+            Thread.sleep(RE_ENUMERATION_POLL_MS)
+        }
+        return null
+    }
+
+    private fun startSession(device: UsbDevice) {
+        showStatus(getString(R.string.status_starting))
+        ProjectionService.start(this, device)
     }
 
     private fun requestPermission(device: UsbDevice) {
@@ -205,6 +261,32 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
     }
 
     private fun showSettings() {
+        val items = arrayOf(
+            getString(R.string.display_orientation),
+            getString(if (HeadUnitLog.enabled) R.string.debug_logging_on else R.string.debug_logging_off)
+        )
+        AlertDialog.Builder(this)
+            .setTitle(R.string.settings)
+            .setItems(items) { dialog, which ->
+                dialog.dismiss()
+                if (which == 0) showOrientationSettings() else showLoggingSettings()
+            }
+            .show()
+    }
+
+    /** Debug logging is off by default and can be turned on to diagnose a connection. */
+    private fun showLoggingSettings() {
+        val options = arrayOf(getString(R.string.disabled), getString(R.string.enabled))
+        AlertDialog.Builder(this)
+            .setTitle(R.string.debug_logging)
+            .setSingleChoiceItems(options, if (HeadUnitLog.enabled) 1 else 0) { dialog, which ->
+                HeadUnitLog.setEnabled(applicationContext, which == 1)
+                dialog.dismiss()
+            }
+            .show()
+    }
+
+    private fun showOrientationSettings() {
         val orientations = intArrayOf(
             ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE,
             ActivityInfo.SCREEN_ORIENTATION_PORTRAIT,
@@ -250,5 +332,9 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
         const val ACTION_USB_PERMISSION = "com.ssheadunit.USB_PERMISSION"
         const val PREFERENCES_NAME = "settings"
         const val PREFERENCE_ORIENTATION = "orientation"
+
+        /** How long a device is given to re-enumerate after an accessory mode switch. */
+        const val RE_ENUMERATION_TIMEOUT_MS = 20_000L
+        const val RE_ENUMERATION_POLL_MS = 500L
     }
 }
