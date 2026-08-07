@@ -1,4 +1,4 @@
-package com.tabletaa.transport
+package com.ssheadunit.transport
 
 /** Byte oriented link with the connected phone. */
 interface Transport {

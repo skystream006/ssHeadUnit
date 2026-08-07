@@ -1,4 +1,4 @@
-package com.tabletaa.protocol
+package com.ssheadunit.protocol
 
 /** Logical channels advertised by the head unit during service discovery. */
 object ChannelId {

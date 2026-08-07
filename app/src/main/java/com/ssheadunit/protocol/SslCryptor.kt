@@ -1,4 +1,4 @@
-package com.tabletaa.protocol
+package com.ssheadunit.protocol
 
 import java.nio.ByteBuffer
 import javax.net.ssl.SSLContext

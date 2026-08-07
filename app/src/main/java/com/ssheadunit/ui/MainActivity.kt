@@ -1,4 +1,4 @@
-package com.tabletaa.ui
+package com.ssheadunit.ui
 
 import android.app.Activity
 import android.app.PendingIntent
@@ -17,9 +17,9 @@ import android.view.SurfaceView
 import android.view.View
 import android.view.WindowManager
 import android.widget.TextView
-import com.tabletaa.R
-import com.tabletaa.session.HeadUnitController
-import com.tabletaa.transport.Aoap
+import com.ssheadunit.R
+import com.ssheadunit.session.HeadUnitController
+import com.ssheadunit.transport.Aoap
 
 /**
  * Full screen projection surface. The tablet behaves like the display of a factory head unit:
@@ -181,6 +181,6 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
 
     private companion object {
         const val TAG = "MainActivity"
-        const val ACTION_USB_PERMISSION = "com.tabletaa.USB_PERMISSION"
+        const val ACTION_USB_PERMISSION = "com.ssheadunit.USB_PERMISSION"
     }
 }

@@ -1,17 +1,17 @@
-package com.tabletaa.session
+package com.ssheadunit.session
 
-import com.tabletaa.protocol.AvMessage
-import com.tabletaa.protocol.ChannelId
-import com.tabletaa.protocol.ControlMessage
-import com.tabletaa.protocol.Frame
-import com.tabletaa.protocol.FrameDecoder
-import com.tabletaa.protocol.InputMessage
-import com.tabletaa.protocol.Message
-import com.tabletaa.protocol.MessageAssembler
-import com.tabletaa.protocol.Messages
-import com.tabletaa.protocol.SensorMessage
-import com.tabletaa.protocol.SslCryptor
-import com.tabletaa.transport.Transport
+import com.ssheadunit.protocol.AvMessage
+import com.ssheadunit.protocol.ChannelId
+import com.ssheadunit.protocol.ControlMessage
+import com.ssheadunit.protocol.Frame
+import com.ssheadunit.protocol.FrameDecoder
+import com.ssheadunit.protocol.InputMessage
+import com.ssheadunit.protocol.Message
+import com.ssheadunit.protocol.MessageAssembler
+import com.ssheadunit.protocol.Messages
+import com.ssheadunit.protocol.SensorMessage
+import com.ssheadunit.protocol.SslCryptor
+import com.ssheadunit.transport.Transport
 import javax.net.ssl.SSLContext
 
 /** Static description of the projected head unit, sent during service discovery. */
