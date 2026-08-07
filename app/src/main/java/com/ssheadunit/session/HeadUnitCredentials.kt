@@ -30,7 +30,6 @@ object HeadUnitCredentials {
 
     const val KEYSTORE_ASSET = "headunit.p12"
     const val PASSWORD_ASSET = "headunit.pwd"
-    private const val GENERATED_KEYSTORE_FILE = "headunit.p12"
     private val EMPTY_PASSWORD = CharArray(0)
 
     fun createSslContext(context: Context): SSLContext {
@@ -58,11 +57,11 @@ object HeadUnitCredentials {
      */
     @Synchronized
     fun ensureCredentials(context: Context): File? {
-        val generatedFile = File(context.filesDir, GENERATED_KEYSTORE_FILE)
+        val generatedFile = File(context.filesDir, KEYSTORE_ASSET)
         if (generatedFile.exists()) return generatedFile
         if (hasBundledKeyStore(context)) return null
 
-        val temporaryFile = File(context.filesDir, "$GENERATED_KEYSTORE_FILE.tmp")
+        val temporaryFile = File(context.filesDir, "$KEYSTORE_ASSET.tmp")
         try {
             val keyPair = KeyPairGenerator.getInstance("RSA").apply { initialize(KEY_SIZE_BITS) }.generateKeyPair()
             val certificate = createCertificate(keyPair.public.encoded, keyPair.private)
@@ -70,12 +69,12 @@ object HeadUnitCredentials {
             keyStore.setKeyEntry(KEY_ALIAS, keyPair.private, EMPTY_PASSWORD, arrayOf(certificate))
             FileOutputStream(temporaryFile).use { keyStore.store(it, EMPTY_PASSWORD) }
             if (!temporaryFile.renameTo(generatedFile)) {
-                throw IOException("Unable to save $GENERATED_KEYSTORE_FILE")
+                throw IOException("Unable to save $KEYSTORE_ASSET")
             }
             return generatedFile
         } catch (e: Exception) {
             temporaryFile.delete()
-            throw MissingCredentialsException("Unable to create $GENERATED_KEYSTORE_FILE", e)
+            throw MissingCredentialsException("Unable to create $KEYSTORE_ASSET", e)
         }
     }
 
