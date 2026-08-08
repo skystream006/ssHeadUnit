@@ -303,8 +303,8 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
                                                 text
                                             }
                                         ) {
-                                            dismiss()
                                             setOrientation(orientation)
+                                            dismiss()
                                             showSettings()
                                         }
                                     }
