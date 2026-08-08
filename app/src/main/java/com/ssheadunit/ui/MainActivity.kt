@@ -364,8 +364,6 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.MATCH_PARENT
         )
-        @Suppress("DEPRECATION")
-        settingsDialog.window?.decorView?.systemUiVisibility = immersiveModeFlags()
         settingsDialog.show()
         @Suppress("DEPRECATION")
         settingsDialog.window?.decorView?.systemUiVisibility = immersiveModeFlags()
