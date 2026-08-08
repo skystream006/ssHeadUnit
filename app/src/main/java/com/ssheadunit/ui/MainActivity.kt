@@ -329,9 +329,10 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
                                     }
 
                                     addSettingsSection(getString(R.string.settings_diagnostics))
+                                    val debugLoggingEnabled = HeadUnitLog.enabled
                                     addSettingsButton(
                                         getString(
-                                            if (HeadUnitLog.enabled) {
+                                            if (debugLoggingEnabled) {
                                                 R.string.debug_logging_on
                                             } else {
                                                 R.string.debug_logging_off
@@ -339,7 +340,7 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
                                         )
                                     ) {
                                         dismiss()
-                                        HeadUnitLog.setEnabled(applicationContext, !HeadUnitLog.enabled)
+                                        HeadUnitLog.setEnabled(applicationContext, !debugLoggingEnabled)
                                         showSettings()
                                     }
                                     addSettingsButton(getString(R.string.view_debug_log)) {
