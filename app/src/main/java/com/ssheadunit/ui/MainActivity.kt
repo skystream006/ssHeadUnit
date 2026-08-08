@@ -298,9 +298,10 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
                 .ifBlank { getString(R.string.debug_log_empty) }
             runOnUiThread {
                 if (isFinishing || (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1 && isDestroyed)) return@runOnUiThread
+                val padding = resources.getDimensionPixelSize(R.dimen.debug_log_padding)
                 val logView = TextView(this).apply {
                     setTextIsSelectable(true)
-                    setPadding(32, 32, 32, 32)
+                    setPadding(padding, padding, padding, padding)
                     text = log
                 }
                 AlertDialog.Builder(this)

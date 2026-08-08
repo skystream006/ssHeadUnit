@@ -38,8 +38,10 @@ object HeadUnitLog {
 
     /** Persists and applies the setting. */
     fun setEnabled(context: Context, value: Boolean) {
+        val appContext = context.applicationContext
         enabled = value
-        context.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
+        logFile = File(appContext.filesDir, LOG_FILE_NAME)
+        appContext.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
             .edit()
             .putBoolean(PREFERENCE_LOGGING, value)
             .apply()
@@ -83,7 +85,7 @@ object HeadUnitLog {
         val file = logFile ?: return
         runCatching {
             if (file.length() > MAX_LOG_SIZE_BYTES) {
-                file.delete()
+                file.writeText("--- Previous debug log rotated after reaching 1 MB ---\n")
             }
             val throwable = error?.let {
                 StringWriter().also { writer -> it.printStackTrace(PrintWriter(writer)) }.toString()
