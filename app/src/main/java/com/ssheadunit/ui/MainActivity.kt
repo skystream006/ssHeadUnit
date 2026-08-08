@@ -21,6 +21,7 @@ import android.view.SurfaceHolder
 import android.view.SurfaceView
 import android.view.View
 import android.view.ViewGroup
+import android.view.Window
 import android.view.WindowManager
 import android.widget.Button
 import android.widget.EditText
@@ -268,7 +269,7 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
         settingsButton.visibility = if (HeadUnitController.isConnected) View.GONE else View.VISIBLE
     }
 
-    /** Every setting is listed directly here so no nested dialogs are needed. */
+    /** Settings are shown full screen so categories are visible without nesting. */
     private fun showSettings() {
         val preferences = getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
         val currentOrientation = preferences.getInt(PREFERENCE_ORIENTATION, ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE)
@@ -276,6 +277,7 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
             .coerceIn(HeadUnitController.MIN_VIDEO_DPI, HeadUnitController.MAX_VIDEO_DPI)
 
         val settingsDialog = Dialog(this).apply settingsDialog@ {
+            requestWindowFeature(Window.FEATURE_NO_TITLE)
             setContentView(
                 LinearLayout(this@MainActivity).apply {
                     orientation = LinearLayout.VERTICAL
@@ -361,6 +363,8 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.MATCH_PARENT
         )
+        @Suppress("DEPRECATION")
+        settingsDialog.window?.decorView?.systemUiVisibility = immersiveModeFlags()
         enterImmersiveMode()
     }
 
@@ -499,7 +503,11 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
 
     private fun enterImmersiveMode() {
         @Suppress("DEPRECATION")
-        window.decorView.systemUiVisibility = (
+        window.decorView.systemUiVisibility = immersiveModeFlags()
+    }
+
+    private fun immersiveModeFlags(): Int =
+        (
             View.SYSTEM_UI_FLAG_FULLSCREEN
                 or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
                 or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
@@ -507,7 +515,6 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
                 or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
                 or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
             )
-    }
 
     private companion object {
         const val TAG = "MainActivity"
