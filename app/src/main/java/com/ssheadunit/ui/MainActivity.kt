@@ -261,6 +261,10 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
     }
 
     private fun showSettings() {
+        val landscapeIndex = 0
+        val portraitIndex = 1
+        val loggingEnabledIndex = 2
+        val loggingDisabledIndex = 3
         val orientations = intArrayOf(
             ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE,
             ActivityInfo.SCREEN_ORIENTATION_PORTRAIT,
@@ -293,7 +297,7 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
             .setItems(items) { dialog, which ->
                 dialog.dismiss()
                 when (which) {
-                    0, 1 -> {
+                    landscapeIndex, portraitIndex -> {
                         val orientation = orientations[which]
                         if (currentOrientation != orientation) {
                             getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
@@ -303,8 +307,8 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
                             requestedOrientation = orientation
                         }
                     }
-                    2 -> if (!HeadUnitLog.enabled) HeadUnitLog.setEnabled(applicationContext, true)
-                    3 -> if (HeadUnitLog.enabled) HeadUnitLog.setEnabled(applicationContext, false)
+                    loggingEnabledIndex -> if (!loggingEnabled) HeadUnitLog.setEnabled(applicationContext, true)
+                    loggingDisabledIndex -> if (loggingEnabled) HeadUnitLog.setEnabled(applicationContext, false)
                 }
             }
             .show()
