@@ -12,6 +12,11 @@
     <string name="settings">Settings</string>
     <string name="display_orientation">Display orientation</string>
     <string name="display_dpi">Display DPI</string>
+    <string name="dpi_120_ldpi">120 (ldpi)</string>
+    <string name="dpi_160_mdpi">160 (mdpi)</string>
+    <string name="dpi_240_hdpi">240 (hdpi)</string>
+    <string name="dpi_320_xhdpi">320 (xhdpi)</string>
+    <string name="dpi_480_xxhdpi">480 (xxhdpi)</string>
     <string name="orientation_landscape">Landscape</string>
     <string name="orientation_portrait">Portrait</string>
     <string name="debug_logging">Debug logging</string>

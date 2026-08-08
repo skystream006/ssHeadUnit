@@ -199,12 +199,14 @@ object HeadUnitController : HeadUnitListener {
             touchWidth = VIDEO_WIDTH,
             touchHeight = VIDEO_HEIGHT,
             video = Messages.VideoConfig(
-                resolution = Messages.VideoResolution.RES_720p,
-                fps = Messages.VideoFps.FPS_60,
+                resolution = DEFAULT_VIDEO_RESOLUTION,
+                fps = DEFAULT_VIDEO_FPS,
                 dpi = dpi
             )
         )
     }
 
+    private const val DEFAULT_VIDEO_RESOLUTION = Messages.VideoResolution.RES_720p
+    private const val DEFAULT_VIDEO_FPS = Messages.VideoFps.FPS_60
     private const val THREAD_JOIN_MS = 1000L
 }

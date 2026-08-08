@@ -323,7 +323,7 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
         val checkedItem = dpiOptions.indexOfFirst { it.value == currentDpi }.coerceAtLeast(0)
         AlertDialog.Builder(this)
             .setTitle(R.string.display_dpi)
-            .setSingleChoiceItems(dpiOptions.map { it.label }.toTypedArray(), checkedItem) { dialog, which ->
+            .setSingleChoiceItems(dpiOptions.map { getString(it.labelRes) }.toTypedArray(), checkedItem) { dialog, which ->
                 getSharedPreferences(AppPreferences.PREFERENCES_NAME, Context.MODE_PRIVATE)
                     .edit()
                     .putInt(AppPreferences.PREFERENCE_DPI, dpiOptions[which].value)
@@ -353,12 +353,13 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
     private companion object {
         const val TAG = "MainActivity"
         const val ACTION_USB_PERMISSION = "com.ssheadunit.USB_PERMISSION"
-        private data class DpiOption(val value: Int, val label: String)
+        private data class DpiOption(val value: Int, val labelRes: Int)
         private val DPI_OPTIONS = listOf(
-            DpiOption(120, "120 (ldpi)"),
-            DpiOption(160, "160 (mdpi)"),
-            DpiOption(240, "240 (hdpi)"),
-            DpiOption(320, "320 (xhdpi)")
+            DpiOption(120, R.string.dpi_120_ldpi),
+            DpiOption(160, R.string.dpi_160_mdpi),
+            DpiOption(240, R.string.dpi_240_hdpi),
+            DpiOption(320, R.string.dpi_320_xhdpi),
+            DpiOption(480, R.string.dpi_480_xxhdpi)
         )
 
         /** How long a device is given to re-enumerate after an accessory mode switch. */
