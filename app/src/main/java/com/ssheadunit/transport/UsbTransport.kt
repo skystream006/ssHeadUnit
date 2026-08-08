@@ -6,7 +6,6 @@ import android.hardware.usb.UsbDeviceConnection
 import android.hardware.usb.UsbEndpoint
 import android.hardware.usb.UsbInterface
 import android.hardware.usb.UsbManager
-import android.os.Build
 import com.ssheadunit.util.HeadUnitLog
 
 /**
@@ -254,10 +253,18 @@ class UsbTransport(
         runCatching { connection.close() }
     }
 
-    /** Best effort recovery from a halted bulk endpoint; a no-op on API levels that lack it. */
+    /** Best effort recovery from a halted bulk endpoint. */
     private fun clearHalt(endpoint: UsbEndpoint) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            runCatching { connection.clearHalt(endpoint) }
+        runCatching {
+            connection.controlTransfer(
+                UsbConstants.USB_DIR_OUT or UsbConstants.USB_TYPE_STANDARD or UsbConstants.USB_RECIP_ENDPOINT,
+                USB_REQUEST_CLEAR_FEATURE,
+                USB_FEATURE_ENDPOINT_HALT,
+                endpoint.address,
+                null,
+                0,
+                0
+            )
         }
     }
 
@@ -270,5 +277,11 @@ class UsbTransport(
 
         /** How many immediate read failures are tolerated before the link is declared dead. */
         const val MAX_CONSECUTIVE_ERRORS = 10
+
+        /** USB standard request code for CLEAR_FEATURE. */
+        const val USB_REQUEST_CLEAR_FEATURE = 1
+
+        /** USB feature selector for ENDPOINT_HALT. */
+        const val USB_FEATURE_ENDPOINT_HALT = 0
     }
 }
