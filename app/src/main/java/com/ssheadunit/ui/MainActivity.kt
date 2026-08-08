@@ -276,8 +276,14 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
             .setItems(items.toTypedArray()) { dialog, which ->
                 dialog.dismiss()
                 when (which) {
-                    in ORIENTATIONS.indices -> setOrientation(ORIENTATIONS[which].first)
-                    ORIENTATIONS.size -> HeadUnitLog.setEnabled(applicationContext, !HeadUnitLog.enabled)
+                    in ORIENTATIONS.indices -> {
+                        setOrientation(ORIENTATIONS[which].first)
+                        showSettings()
+                    }
+                    ORIENTATIONS.size -> {
+                        HeadUnitLog.setEnabled(applicationContext, !HeadUnitLog.enabled)
+                        showSettings()
+                    }
                     else -> showDebugLog()
                 }
             }
