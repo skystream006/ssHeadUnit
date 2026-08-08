@@ -261,7 +261,8 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
     }
 
     private fun showSettings() {
-        val currentOrientation = getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
+        val preferences = getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
+        val currentOrientation = preferences
             .getInt(PREFERENCE_ORIENTATION, ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE)
         val loggingEnabled = HeadUnitLog.enabled
         fun withSelection(isSelected: Boolean, label: String): String =
@@ -275,8 +276,7 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
                 ),
             ) {
                 if (currentOrientation != ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE) {
-                    getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
-                        .edit()
+                    preferences.edit()
                         .putInt(PREFERENCE_ORIENTATION, ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE)
                         .apply()
                     requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
@@ -289,8 +289,7 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
                 ),
             ) {
                 if (currentOrientation != ActivityInfo.SCREEN_ORIENTATION_PORTRAIT) {
-                    getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
-                        .edit()
+                    preferences.edit()
                         .putInt(PREFERENCE_ORIENTATION, ActivityInfo.SCREEN_ORIENTATION_PORTRAIT)
                         .apply()
                     requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
@@ -315,8 +314,7 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
         )
         AlertDialog.Builder(this)
             .setTitle(R.string.settings)
-            .setItems(items.map { it.label }.toTypedArray()) { dialog, which ->
-                dialog.dismiss()
+            .setItems(items.map { it.label }.toTypedArray()) { _, which ->
                 items[which].onSelect()
             }
             .show()
