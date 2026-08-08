@@ -25,4 +25,6 @@
     <string name="view_debug_log">View debug log</string>
     <string name="debug_log">Debug log</string>
     <string name="debug_log_empty">No diagnostic records yet.</string>
+    <string name="clear_debug_log">Clear debug log</string>
+    <string name="share_debug_log">Share debug log</string>
 </resources>
