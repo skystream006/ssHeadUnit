@@ -83,6 +83,7 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
         surfaceView.holder.addCallback(this)
         usbManager = getSystemService(Context.USB_SERVICE) as UsbManager
         applyOrientation()
+        applyVideoDpi()
         settingsButton.setOnClickListener { showSettings() }
         enterImmersiveMode()
         HeadUnitLog.load(applicationContext)
@@ -263,14 +264,20 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
 
     /** Every setting is listed directly here so no nested dialogs are needed. */
     private fun showSettings() {
-        val currentOrientation = getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
-            .getInt(PREFERENCE_ORIENTATION, ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE)
+        val preferences = getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
+        val currentOrientation = preferences.getInt(PREFERENCE_ORIENTATION, ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE)
+        val currentDpi = preferences.getInt(PREFERENCE_DPI, HeadUnitController.DEFAULT_VIDEO_DPI)
         val items = ORIENTATIONS.map { (orientation, label) ->
             val text = getString(R.string.orientation_option, getString(label))
             if (orientation == currentOrientation) getString(R.string.option_selected, text) else text
         }.toMutableList()
+        items += VIDEO_DPI_OPTIONS.map { dpi ->
+            val text = getString(R.string.dpi_option, dpi)
+            if (dpi == currentDpi) getString(R.string.option_selected, text) else text
+        }
         items += getString(if (HeadUnitLog.enabled) R.string.debug_logging_on else R.string.debug_logging_off)
         items += getString(R.string.view_debug_log)
+        val debugIndex = ORIENTATIONS.size + VIDEO_DPI_OPTIONS.size
         AlertDialog.Builder(this)
             .setTitle(R.string.settings)
             .setItems(items.toTypedArray()) { dialog, which ->
@@ -280,7 +287,11 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
                         setOrientation(ORIENTATIONS[which].first)
                         showSettings()
                     }
-                    ORIENTATIONS.size -> {
+                    in ORIENTATIONS.size until debugIndex -> {
+                        setVideoDpi(VIDEO_DPI_OPTIONS[which - ORIENTATIONS.size])
+                        showSettings()
+                    }
+                    debugIndex -> {
                         HeadUnitLog.setEnabled(applicationContext, !HeadUnitLog.enabled)
                         showSettings()
                     }
@@ -296,6 +307,14 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
             .putInt(PREFERENCE_ORIENTATION, orientation)
             .apply()
         requestedOrientation = orientation
+    }
+
+    private fun setVideoDpi(dpi: Int) {
+        getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .putInt(PREFERENCE_DPI, dpi)
+            .apply()
+        HeadUnitController.setVideoDpi(dpi)
     }
 
     private fun showDebugLog() {
@@ -323,6 +342,12 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
             .getInt(PREFERENCE_ORIENTATION, ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE)
     }
 
+    private fun applyVideoDpi() {
+        val dpi = getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
+            .getInt(PREFERENCE_DPI, HeadUnitController.DEFAULT_VIDEO_DPI)
+        HeadUnitController.setVideoDpi(dpi)
+    }
+
     private fun enterImmersiveMode() {
         @Suppress("DEPRECATION")
         window.decorView.systemUiVisibility = (
@@ -340,11 +365,13 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
         const val ACTION_USB_PERMISSION = "com.ssheadunit.USB_PERMISSION"
         const val PREFERENCES_NAME = "settings"
         const val PREFERENCE_ORIENTATION = "orientation"
+        const val PREFERENCE_DPI = "video_dpi"
 
         val ORIENTATIONS = listOf(
             ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE to R.string.orientation_landscape,
             ActivityInfo.SCREEN_ORIENTATION_PORTRAIT to R.string.orientation_portrait,
         )
+        val VIDEO_DPI_OPTIONS = listOf(120, 160, 200, 240, 280)
 
         /** How long a device is given to re-enumerate after an accessory mode switch. */
         const val RE_ENUMERATION_TIMEOUT_MS = 20_000L
