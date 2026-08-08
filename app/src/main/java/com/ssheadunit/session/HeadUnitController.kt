@@ -10,7 +10,7 @@ import com.ssheadunit.av.VideoRenderer
 import com.ssheadunit.protocol.Messages
 import com.ssheadunit.transport.Aoap
 import com.ssheadunit.transport.Transport
-import com.ssheadunit.ui.MainActivity
+import com.ssheadunit.util.AppPreferences
 import com.ssheadunit.util.HeadUnitLog
 
 /**
@@ -193,8 +193,8 @@ object HeadUnitController : HeadUnitListener {
     }
 
     private fun loadConfig(context: Context): HeadUnitConfig {
-        val dpi = context.getSharedPreferences(MainActivity.PREFERENCES_NAME, Context.MODE_PRIVATE)
-            .getInt(MainActivity.PREFERENCE_DPI, MainActivity.DEFAULT_DPI)
+        val dpi = context.getSharedPreferences(AppPreferences.PREFERENCES_NAME, Context.MODE_PRIVATE)
+            .getInt(AppPreferences.PREFERENCE_DPI, AppPreferences.DEFAULT_DPI)
         return HeadUnitConfig(
             touchWidth = VIDEO_WIDTH,
             touchHeight = VIDEO_HEIGHT,

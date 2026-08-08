@@ -24,6 +24,7 @@ import com.ssheadunit.R
 import com.ssheadunit.session.HeadUnitController
 import com.ssheadunit.session.HeadUnitCredentials
 import com.ssheadunit.transport.Aoap
+import com.ssheadunit.util.AppPreferences
 import com.ssheadunit.util.HeadUnitLog
 
 /**
@@ -297,7 +298,7 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
             ActivityInfo.SCREEN_ORIENTATION_PORTRAIT,
         )
         val currentOrientation = getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
-            .getInt(PREFERENCE_ORIENTATION, ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE)
+            .getInt(AppPreferences.PREFERENCE_ORIENTATION, ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE)
         val checkedItem = orientations.indexOf(currentOrientation).coerceAtLeast(0)
         AlertDialog.Builder(this)
             .setTitle(R.string.display_orientation)
@@ -307,7 +308,7 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
             ) { dialog, which ->
                 getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
                     .edit()
-                    .putInt(PREFERENCE_ORIENTATION, orientations[which])
+                    .putInt(AppPreferences.PREFERENCE_ORIENTATION, orientations[which])
                     .apply()
                 requestedOrientation = orientations[which]
                 dialog.dismiss()
@@ -317,14 +318,14 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
 
     private fun showDpiSettings() {
         val currentDpi = getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
-            .getInt(PREFERENCE_DPI, DEFAULT_DPI)
+            .getInt(AppPreferences.PREFERENCE_DPI, AppPreferences.DEFAULT_DPI)
         val checkedItem = DPI_OPTIONS.indexOf(currentDpi).coerceAtLeast(0)
         AlertDialog.Builder(this)
             .setTitle(R.string.display_dpi)
             .setSingleChoiceItems(DPI_OPTIONS.map { it.toString() }.toTypedArray(), checkedItem) { dialog, which ->
                 getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
                     .edit()
-                    .putInt(PREFERENCE_DPI, DPI_OPTIONS[which])
+                    .putInt(AppPreferences.PREFERENCE_DPI, DPI_OPTIONS[which])
                     .apply()
                 dialog.dismiss()
             }
@@ -333,7 +334,7 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
 
     private fun applyOrientation() {
         requestedOrientation = getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
-            .getInt(PREFERENCE_ORIENTATION, ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE)
+            .getInt(AppPreferences.PREFERENCE_ORIENTATION, ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE)
     }
 
     private fun enterImmersiveMode() {
@@ -351,10 +352,7 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
     private companion object {
         const val TAG = "MainActivity"
         const val ACTION_USB_PERMISSION = "com.ssheadunit.USB_PERMISSION"
-        const val PREFERENCES_NAME = "settings"
-        const val PREFERENCE_ORIENTATION = "orientation"
-        const val PREFERENCE_DPI = "dpi"
-        const val DEFAULT_DPI = 160
+        const val PREFERENCES_NAME = AppPreferences.PREFERENCES_NAME
         val DPI_OPTIONS = intArrayOf(120, 160, 240, 320)
 
         /** How long a device is given to re-enumerate after an accessory mode switch. */
