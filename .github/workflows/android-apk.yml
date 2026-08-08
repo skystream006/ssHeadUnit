@@ -1,4 +1,4 @@
-name: Android Release APK
+name: Android APK
 
 on:
   push:
@@ -61,8 +61,8 @@ jobs:
           print(f"version_name={version_name}")
           PY
 
-      - name: Build release APK
-        run: ./gradlew test assembleRelease
+      - name: Build APK
+        run: ./gradlew test assembleDebug
 
       - name: Set APK name
         id: apk_name
@@ -89,10 +89,10 @@ jobs:
             echo "No pull request found for ${{ github.sha }}; using 0" >&2
             pr_number=0
           fi
-          echo "apk_name=ssHeadUnit-v${{ steps.version.outputs.version_name }}-pr${pr_number}-release-unsigned" >> "$GITHUB_OUTPUT"
+          echo "apk_name=ssHeadUnit-v${{ steps.version.outputs.version_name }}-pr${pr_number}" >> "$GITHUB_OUTPUT"
 
       - name: Rename APK
-        run: cp app/build/outputs/apk/release/app-release-unsigned.apk "${{ steps.apk_name.outputs.apk_name }}.apk"
+        run: cp app/build/outputs/apk/debug/app-debug.apk "${{ steps.apk_name.outputs.apk_name }}.apk"
 
       - name: Upload APK
         uses: actions/upload-artifact@v7

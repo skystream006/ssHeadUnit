@@ -42,8 +42,8 @@ A car head unit is the USB *host* and the phone is the *accessory*:
 
 The build needs the Android SDK (compile SDK 35) and access to `dl.google.com` for the Android
 Gradle Plugin. The app itself has no runtime dependencies beyond the Android platform.
-The GitHub Actions workflow builds the release variant and uploads the unsigned APK as a workflow
-artifact.
+The Android APK workflow builds the debug variant automatically. Run the Android Release APK
+workflow manually in GitHub Actions to build and upload an unsigned release APK artifact.
 
 ## Requirements
 
