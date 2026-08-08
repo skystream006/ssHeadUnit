@@ -257,7 +257,7 @@ class UsbTransport(
     private fun clearHalt(endpoint: UsbEndpoint) {
         runCatching {
             connection.controlTransfer(
-                UsbConstants.USB_DIR_OUT or UsbConstants.USB_TYPE_STANDARD or UsbConstants.USB_RECIP_ENDPOINT,
+                UsbConstants.USB_DIR_OUT or UsbConstants.USB_TYPE_STANDARD or USB_RECIP_ENDPOINT,
                 USB_REQUEST_CLEAR_FEATURE,
                 USB_FEATURE_ENDPOINT_HALT,
                 endpoint.address,
@@ -283,5 +283,8 @@ class UsbTransport(
 
         /** USB feature selector for ENDPOINT_HALT. */
         const val USB_FEATURE_ENDPOINT_HALT = 0
+
+        /** USB recipient field for an endpoint target. */
+        const val USB_RECIP_ENDPOINT = 0x02
     }
 }
