@@ -365,8 +365,16 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
             ViewGroup.LayoutParams.MATCH_PARENT
         )
         settingsDialog.show()
-        @Suppress("DEPRECATION")
-        settingsDialog.window?.decorView?.systemUiVisibility = immersiveModeFlags()
+        settingsDialog.window?.decorView?.let { decorView ->
+            @Suppress("DEPRECATION")
+            decorView.systemUiVisibility = immersiveModeFlags()
+            decorView.viewTreeObserver.addOnWindowFocusChangeListener { hasFocus ->
+                if (hasFocus) {
+                    @Suppress("DEPRECATION")
+                    decorView.systemUiVisibility = immersiveModeFlags()
+                }
+            }
+        }
         enterImmersiveMode()
     }
 
