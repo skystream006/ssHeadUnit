@@ -289,7 +289,7 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
                             addView(
                                 LinearLayout(this@MainActivity).apply {
                                     orientation = LinearLayout.VERTICAL
-                                    val padding = dp(16)
+                                    val padding = dpToPx(16)
                                     setPadding(padding, padding, padding, padding)
                                     addSettingsSection(getString(R.string.settings_display))
                                     ORIENTATIONS.forEach { (orientation, label) ->
@@ -338,8 +338,8 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
                                             }
                                         )
                                     ) {
-                                        HeadUnitLog.setEnabled(applicationContext, !HeadUnitLog.enabled)
                                         dismiss()
+                                        HeadUnitLog.setEnabled(applicationContext, !HeadUnitLog.enabled)
                                         showSettings()
                                     }
                                     addSettingsButton(getString(R.string.view_debug_log)) {
@@ -372,7 +372,7 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
         LinearLayout(this).apply {
             gravity = Gravity.CENTER_VERTICAL
             orientation = LinearLayout.HORIZONTAL
-            val padding = dp(16)
+            val padding = dpToPx(16)
             setPadding(padding, padding, padding, padding / 2)
             addView(
                 TextView(this@MainActivity).apply {
@@ -405,8 +405,8 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
             ).apply {
-                topMargin = dp(16)
-                bottomMargin = dp(8)
+                topMargin = dpToPx(16)
+                bottomMargin = dpToPx(8)
             }
         )
     }
@@ -422,12 +422,12 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
             ).apply {
-                bottomMargin = dp(8)
+                bottomMargin = dpToPx(8)
             }
         )
     }
 
-    private fun dp(value: Int): Int {
+    private fun dpToPx(value: Int): Int {
         return (value * resources.displayMetrics.density).toInt()
     }
 
