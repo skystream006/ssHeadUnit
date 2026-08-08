@@ -15,6 +15,7 @@ import android.hardware.usb.UsbManager
 import android.os.Build
 import android.os.Bundle
 import android.text.InputType
+import android.util.TypedValue
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.SurfaceHolder
@@ -363,6 +364,8 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.MATCH_PARENT
         )
+        @Suppress("DEPRECATION")
+        settingsDialog.window?.decorView?.systemUiVisibility = immersiveModeFlags()
         settingsDialog.show()
         @Suppress("DEPRECATION")
         settingsDialog.window?.decorView?.systemUiVisibility = immersiveModeFlags()
@@ -429,7 +432,11 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
     }
 
     private fun dpToPx(value: Int): Int {
-        return (value * resources.displayMetrics.density).toInt()
+        return TypedValue.applyDimension(
+            TypedValue.COMPLEX_UNIT_DIP,
+            value.toFloat(),
+            resources.displayMetrics
+        ).toInt()
     }
 
     private fun setOrientation(orientation: Int) {
