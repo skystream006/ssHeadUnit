@@ -81,16 +81,18 @@ object HeadUnitLog {
         if (file.isFile) file.readText() else ""
     }
 
-    private fun write(tag: String, level: String, message: String, error: Throwable? = null) = synchronized(lock) {
-        val file = logFile ?: return
-        runCatching {
-            if (file.length() > MAX_LOG_SIZE_BYTES) {
-                file.writeText("--- Previous debug log rotated after reaching the size limit ---\n")
+    private fun write(tag: String, level: String, message: String, error: Throwable? = null) {
+        synchronized(lock) {
+            val file = logFile ?: return
+            runCatching {
+                if (file.length() > MAX_LOG_SIZE_BYTES) {
+                    file.writeText("--- Previous debug log rotated after reaching the size limit ---\n")
+                }
+                val throwable = error?.let {
+                    StringWriter().also { writer -> it.printStackTrace(PrintWriter(writer)) }.toString()
+                }.orEmpty()
+                file.appendText("${timestamp().format(Date())} $level/$tag: $message\n$throwable")
             }
-            val throwable = error?.let {
-                StringWriter().also { writer -> it.printStackTrace(PrintWriter(writer)) }.toString()
-            }.orEmpty()
-            file.appendText("${timestamp().format(Date())} $level/$tag: $message\n$throwable")
         }
     }
 
