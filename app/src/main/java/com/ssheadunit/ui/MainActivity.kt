@@ -373,7 +373,13 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
             ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE to R.string.orientation_landscape,
             ActivityInfo.SCREEN_ORIENTATION_PORTRAIT to R.string.orientation_portrait,
         )
-        val VIDEO_DPI_OPTIONS = listOf(120, 160, 200, 240, 280)
+        val VIDEO_DPI_OPTIONS = listOf(
+            HeadUnitController.MIN_VIDEO_DPI,
+            160,
+            200,
+            240,
+            HeadUnitController.MAX_VIDEO_DPI
+        )
 
         /** How long a device is given to re-enumerate after an accessory mode switch. */
         const val RE_ENUMERATION_TIMEOUT_MS = 20_000L

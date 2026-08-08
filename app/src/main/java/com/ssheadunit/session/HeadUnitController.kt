@@ -23,7 +23,9 @@ object HeadUnitController : HeadUnitListener {
     /** Projected display size; the phone renders its UI at exactly this resolution. */
     const val VIDEO_WIDTH = 1280
     const val VIDEO_HEIGHT = 720
+    const val MIN_VIDEO_DPI = 120
     const val DEFAULT_VIDEO_DPI = 160
+    const val MAX_VIDEO_DPI = 280
 
     private val videoRenderer = VideoRenderer()
     private val audioPlayer = AudioPlayer()
@@ -128,7 +130,7 @@ object HeadUnitController : HeadUnitListener {
     }
 
     fun setVideoDpi(dpi: Int) {
-        videoDpi = dpi.coerceAtLeast(1)
+        videoDpi = dpi.coerceIn(MIN_VIDEO_DPI, MAX_VIDEO_DPI)
     }
 
     // --- session callbacks --------------------------------------------------------------------
