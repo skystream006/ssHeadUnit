@@ -269,7 +269,7 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
             .getInt(PREFERENCE_ORIENTATION, ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE)
         val loggingEnabled = HeadUnitLog.enabled
         fun withSelection(isSelected: Boolean, label: String): String =
-            if (isSelected) "✓ $label" else label
+            if (isSelected) "$SELECTED_INDICATOR $label" else label
         val items = arrayOf(
             withSelection(
                 currentOrientation == ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE,
@@ -332,6 +332,7 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
         const val ACTION_USB_PERMISSION = "com.ssheadunit.USB_PERMISSION"
         const val PREFERENCES_NAME = "settings"
         const val PREFERENCE_ORIENTATION = "orientation"
+        const val SELECTED_INDICATOR = "✓"
 
         /** How long a device is given to re-enumerate after an accessory mode switch. */
         const val RE_ENUMERATION_TIMEOUT_MS = 20_000L
