@@ -128,7 +128,7 @@ object HeadUnitController : HeadUnitListener {
     }
 
     fun setVideoDpi(dpi: Int) {
-        videoDpi = dpi
+        videoDpi = dpi.coerceAtLeast(1)
     }
 
     // --- session callbacks --------------------------------------------------------------------
