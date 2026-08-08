@@ -579,7 +579,7 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
                                         )
                                     )
                                 }
-                            )
+                            }
                         }, "debug-log-sharer").start()
                     }
                     .setPositiveButton(android.R.string.ok, null)
