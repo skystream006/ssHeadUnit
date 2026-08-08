@@ -297,6 +297,7 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
                         showSettings()
                     }
                     viewDebugLogIndex -> showDebugLog()
+                    else -> Unit
                 }
             }
             .show()
