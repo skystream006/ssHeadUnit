@@ -382,7 +382,6 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
                 }
             }
         }
-        enterImmersiveMode()
     }
 
     private fun settingsHeader(dialog: Dialog): View =
