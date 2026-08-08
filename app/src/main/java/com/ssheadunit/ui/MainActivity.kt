@@ -261,55 +261,63 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
     }
 
     private fun showSettings() {
-        val landscapeIndex = 0
-        val portraitIndex = 1
-        val loggingEnabledIndex = 2
-        val loggingDisabledIndex = 3
-        val orientations = intArrayOf(
-            ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE,
-            ActivityInfo.SCREEN_ORIENTATION_PORTRAIT,
-        )
         val currentOrientation = getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
             .getInt(PREFERENCE_ORIENTATION, ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE)
         val loggingEnabled = HeadUnitLog.enabled
         fun withSelection(isSelected: Boolean, label: String): String =
             if (isSelected) "$SELECTED_INDICATOR $label" else label
-        val items = arrayOf(
-            withSelection(
-                currentOrientation == ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE,
-                "${getString(R.string.display_orientation)}: ${getString(R.string.orientation_landscape)}",
-            ),
-            withSelection(
-                currentOrientation == ActivityInfo.SCREEN_ORIENTATION_PORTRAIT,
-                "${getString(R.string.display_orientation)}: ${getString(R.string.orientation_portrait)}",
-            ),
-            withSelection(
-                loggingEnabled,
-                "${getString(R.string.debug_logging)}: ${getString(R.string.enabled)}",
-            ),
-            withSelection(
-                !loggingEnabled,
-                "${getString(R.string.debug_logging)}: ${getString(R.string.disabled)}",
-            ),
+        data class SettingItem(val label: String, val onSelect: () -> Unit)
+        val items = listOf(
+            SettingItem(
+                withSelection(
+                    currentOrientation == ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE,
+                    "${getString(R.string.display_orientation)}: ${getString(R.string.orientation_landscape)}",
+                ),
+            ) {
+                if (currentOrientation != ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE) {
+                    getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
+                        .edit()
+                        .putInt(PREFERENCE_ORIENTATION, ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE)
+                        .apply()
+                    requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+                }
+            },
+            SettingItem(
+                withSelection(
+                    currentOrientation == ActivityInfo.SCREEN_ORIENTATION_PORTRAIT,
+                    "${getString(R.string.display_orientation)}: ${getString(R.string.orientation_portrait)}",
+                ),
+            ) {
+                if (currentOrientation != ActivityInfo.SCREEN_ORIENTATION_PORTRAIT) {
+                    getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
+                        .edit()
+                        .putInt(PREFERENCE_ORIENTATION, ActivityInfo.SCREEN_ORIENTATION_PORTRAIT)
+                        .apply()
+                    requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+                }
+            },
+            SettingItem(
+                withSelection(
+                    loggingEnabled,
+                    "${getString(R.string.debug_logging)}: ${getString(R.string.enabled)}",
+                ),
+            ) {
+                if (!loggingEnabled) HeadUnitLog.setEnabled(applicationContext, true)
+            },
+            SettingItem(
+                withSelection(
+                    !loggingEnabled,
+                    "${getString(R.string.debug_logging)}: ${getString(R.string.disabled)}",
+                ),
+            ) {
+                if (loggingEnabled) HeadUnitLog.setEnabled(applicationContext, false)
+            },
         )
         AlertDialog.Builder(this)
             .setTitle(R.string.settings)
-            .setItems(items) { dialog, which ->
+            .setItems(items.map { it.label }.toTypedArray()) { dialog, which ->
                 dialog.dismiss()
-                when (which) {
-                    landscapeIndex, portraitIndex -> {
-                        val orientation = orientations[which]
-                        if (currentOrientation != orientation) {
-                            getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
-                                .edit()
-                                .putInt(PREFERENCE_ORIENTATION, orientation)
-                                .apply()
-                            requestedOrientation = orientation
-                        }
-                    }
-                    loggingEnabledIndex -> if (!loggingEnabled) HeadUnitLog.setEnabled(applicationContext, true)
-                    loggingDisabledIndex -> if (loggingEnabled) HeadUnitLog.setEnabled(applicationContext, false)
-                }
+                items[which].onSelect()
             }
             .show()
     }
