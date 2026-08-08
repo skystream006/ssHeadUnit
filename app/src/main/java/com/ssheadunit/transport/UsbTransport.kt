@@ -6,6 +6,7 @@ import android.hardware.usb.UsbDeviceConnection
 import android.hardware.usb.UsbEndpoint
 import android.hardware.usb.UsbInterface
 import android.hardware.usb.UsbManager
+import android.os.Build
 import com.ssheadunit.util.HeadUnitLog
 
 /**
@@ -187,8 +188,10 @@ object Aoap {
  *
  * A bulk read that returns a negative result is either a benign timeout or a broken link. The two
  * are told apart by how long the read took: a read that fails long before its timeout expired did
- * not wait for data, so the endpoint is stalled or gone. Once enough of those pile up the link is
- * declared dead instead of letting the session block for ever.
+ * not wait for data, so the endpoint is stalled or gone. A stalled endpoint can often be woken up
+ * again by clearing its halt condition, so that is attempted before the failure is allowed to pile
+ * up. Once enough failures pile up regardless the link is declared dead instead of letting the
+ * session block for ever.
  */
 class UsbTransport(
     private val connection: UsbDeviceConnection,
@@ -209,7 +212,10 @@ class UsbTransport(
             val chunk = minOf(MAX_TRANSFER, data.size - offset)
             val payload = if (offset == 0 && chunk == data.size) data else data.copyOfRange(offset, offset + chunk)
             val written = connection.bulkTransfer(output, payload, chunk, timeoutMs)
-            if (written < 0) throw TransportException("USB write failed at offset $offset")
+            if (written < 0) {
+                clearHalt(output)
+                throw TransportException("USB write failed at offset $offset")
+            }
             offset += written
         }
     }
@@ -229,6 +235,10 @@ class UsbTransport(
             return 0
         }
         consecutiveErrors++
+        // The endpoint may simply be stalled (a common state right after accessory mode is
+        // entered); clearing it gives the next read a chance to succeed instead of letting
+        // failures pile up towards a link that may still be usable.
+        clearHalt(input)
         if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
             throw TransportException("USB read failed $consecutiveErrors times in a row; link lost")
         }
@@ -240,6 +250,13 @@ class UsbTransport(
         closed = true
         runCatching { connection.releaseInterface(iface) }
         runCatching { connection.close() }
+    }
+
+    /** Best effort recovery from a halted bulk endpoint; a no-op on API levels that lack it. */
+    private fun clearHalt(endpoint: UsbEndpoint) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            runCatching { connection.clearHalt(endpoint) }
+        }
     }
 
     private companion object {
