@@ -444,14 +444,19 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
         addView(
             RadioGroup(this@MainActivity).apply {
                 orientation = RadioGroup.VERTICAL
+                val selectionHandlers = mutableMapOf<Int, () -> Unit>()
+                var selectedId = View.NO_ID
                 VIDEO_DPI_OPTIONS.forEach { dpi ->
+                    val optionId = View.generateViewId()
+                    if (dpi == currentDpi) {
+                        selectedId = optionId
+                    }
+                    selectionHandlers[optionId] = { onPresetSelected(dpi) }
                     addView(
                         RadioButton(this@MainActivity).apply {
-                            id = View.generateViewId()
+                            id = optionId
                             text = getString(R.string.dpi_option, dpi)
                             setTextColor(getColor(android.R.color.white))
-                            isChecked = dpi == currentDpi
-                            setOnClickListener { onPresetSelected(dpi) }
                         },
                         RadioGroup.LayoutParams(
                             ViewGroup.LayoutParams.MATCH_PARENT,
@@ -459,19 +464,28 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
                         )
                     )
                 }
+                val customId = View.generateViewId()
+                if (!VIDEO_DPI_OPTIONS.contains(currentDpi)) {
+                    selectedId = customId
+                }
+                selectionHandlers[customId] = onCustomSelected
                 addView(
                     RadioButton(this@MainActivity).apply {
-                        id = View.generateViewId()
+                        id = customId
                         text = getString(R.string.custom_dpi_option, currentDpi)
                         setTextColor(getColor(android.R.color.white))
-                        isChecked = !VIDEO_DPI_OPTIONS.contains(currentDpi)
-                        setOnClickListener { onCustomSelected() }
                     },
                     RadioGroup.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT,
                         ViewGroup.LayoutParams.WRAP_CONTENT
                     )
                 )
+                if (selectedId != View.NO_ID) {
+                    check(selectedId)
+                }
+                setOnCheckedChangeListener { _, checkedId ->
+                    selectionHandlers[checkedId]?.invoke()
+                }
             },
             LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
