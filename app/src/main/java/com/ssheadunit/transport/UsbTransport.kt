@@ -211,11 +211,13 @@ class UsbTransport(
             if (closed) throw TransportException("Transport closed")
             val chunk = minOf(MAX_TRANSFER, data.size - offset)
             val payload = if (offset == 0 && chunk == data.size) data else data.copyOfRange(offset, offset + chunk)
-            val written = connection.bulkTransfer(output, payload, chunk, timeoutMs)
+            var written = connection.bulkTransfer(output, payload, chunk, timeoutMs)
             if (written < 0) {
+                // The endpoint may simply be stalled; clear it and retry once before giving up.
                 clearHalt(output)
-                throw TransportException("USB write failed at offset $offset")
+                written = connection.bulkTransfer(output, payload, chunk, timeoutMs)
             }
+            if (written < 0) throw TransportException("USB write failed at offset $offset")
             offset += written
         }
     }
