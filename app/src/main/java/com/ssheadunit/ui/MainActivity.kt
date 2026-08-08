@@ -2,6 +2,7 @@ package com.ssheadunit.ui
 
 import android.app.Activity
 import android.app.AlertDialog
+import android.app.Dialog
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -14,13 +15,16 @@ import android.hardware.usb.UsbManager
 import android.os.Build
 import android.os.Bundle
 import android.text.InputType
+import android.view.Gravity
 import android.view.MotionEvent
 import android.view.SurfaceHolder
 import android.view.SurfaceView
 import android.view.View
+import android.view.ViewGroup
 import android.view.WindowManager
 import android.widget.Button
 import android.widget.EditText
+import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import com.ssheadunit.R
@@ -270,44 +274,157 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
         val currentOrientation = preferences.getInt(PREFERENCE_ORIENTATION, ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE)
         val currentDpi = preferences.getInt(PREFERENCE_DPI, HeadUnitController.DEFAULT_VIDEO_DPI)
             .coerceIn(HeadUnitController.MIN_VIDEO_DPI, HeadUnitController.MAX_VIDEO_DPI)
-        val items = ORIENTATIONS.map { (orientation, label) ->
-            val text = getString(R.string.orientation_option, getString(label))
-            if (orientation == currentOrientation) getString(R.string.option_selected, text) else text
-        }.toMutableList()
-        items += VIDEO_DPI_OPTIONS.map { dpi ->
-            val text = getString(R.string.dpi_option, dpi)
-            if (dpi == currentDpi) getString(R.string.option_selected, text) else text
-        }
-        val customDpiText = getString(R.string.custom_dpi_option, currentDpi)
-        items += if (VIDEO_DPI_OPTIONS.contains(currentDpi)) customDpiText else getString(R.string.option_selected, customDpiText)
-        items += getString(if (HeadUnitLog.enabled) R.string.debug_logging_on else R.string.debug_logging_off)
-        items += getString(R.string.view_debug_log)
-        val customDpiIndex = ORIENTATIONS.size + VIDEO_DPI_OPTIONS.size
-        val debugIndex = customDpiIndex + 1
-        val viewDebugLogIndex = debugIndex + 1
-        AlertDialog.Builder(this)
-            .setTitle(R.string.settings)
-            .setItems(items.toTypedArray()) { dialog, which ->
-                dialog.dismiss()
-                when (which) {
-                    in ORIENTATIONS.indices -> {
-                        setOrientation(ORIENTATIONS[which].first)
-                        showSettings()
-                    }
-                    in ORIENTATIONS.size until debugIndex -> {
-                        setVideoDpi(VIDEO_DPI_OPTIONS[which - ORIENTATIONS.size])
-                        showSettings()
-                    }
-                    customDpiIndex -> showCustomDpiDialog(currentDpi)
-                    debugIndex -> {
-                        HeadUnitLog.setEnabled(applicationContext, !HeadUnitLog.enabled)
-                        showSettings()
-                    }
-                    viewDebugLogIndex -> showDebugLog()
-                    else -> Unit
+
+        val settingsDialog = Dialog(this).apply settingsDialog@ {
+            setContentView(
+                LinearLayout(this@MainActivity).apply {
+                    orientation = LinearLayout.VERTICAL
+                    setBackgroundColor(getColor(android.R.color.black))
+
+                    addView(settingsHeader(this@settingsDialog))
+                    addView(
+                        ScrollView(this@MainActivity).apply {
+                            addView(
+                                LinearLayout(this@MainActivity).apply {
+                                    orientation = LinearLayout.VERTICAL
+                                    val padding = dp(16)
+                                    setPadding(padding, padding, padding, padding)
+                                    addSettingsSection(getString(R.string.settings_display))
+                                    ORIENTATIONS.forEach { (orientation, label) ->
+                                        val text = getString(R.string.orientation_option, getString(label))
+                                        addSettingsButton(
+                                            if (orientation == currentOrientation) {
+                                                getString(R.string.option_selected, text)
+                                            } else {
+                                                text
+                                            }
+                                        ) {
+                                            dismiss()
+                                            setOrientation(orientation)
+                                            showSettings()
+                                        }
+                                    }
+                                    VIDEO_DPI_OPTIONS.forEach { dpi ->
+                                        val text = getString(R.string.dpi_option, dpi)
+                                        addSettingsButton(
+                                            if (dpi == currentDpi) getString(R.string.option_selected, text) else text
+                                        ) {
+                                            dismiss()
+                                            setVideoDpi(dpi)
+                                            showSettings()
+                                        }
+                                    }
+                                    val customDpiText = getString(R.string.custom_dpi_option, currentDpi)
+                                    addSettingsButton(
+                                        if (VIDEO_DPI_OPTIONS.contains(currentDpi)) {
+                                            customDpiText
+                                        } else {
+                                            getString(R.string.option_selected, customDpiText)
+                                        }
+                                    ) {
+                                        dismiss()
+                                        showCustomDpiDialog(currentDpi)
+                                    }
+
+                                    addSettingsSection(getString(R.string.settings_diagnostics))
+                                    addSettingsButton(
+                                        getString(
+                                            if (HeadUnitLog.enabled) {
+                                                R.string.debug_logging_on
+                                            } else {
+                                                R.string.debug_logging_off
+                                            }
+                                        )
+                                    ) {
+                                        HeadUnitLog.setEnabled(applicationContext, !HeadUnitLog.enabled)
+                                        dismiss()
+                                        showSettings()
+                                    }
+                                    addSettingsButton(getString(R.string.view_debug_log)) {
+                                        dismiss()
+                                        showDebugLog()
+                                    }
+                                }
+                            )
+                        },
+                        LinearLayout.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT,
+                            0,
+                            1f
+                        )
+                    )
                 }
+            )
+        }
+        settingsDialog.show()
+        settingsDialog.window?.setLayout(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.MATCH_PARENT
+        )
+        enterImmersiveMode()
+    }
+
+    private fun settingsHeader(dialog: Dialog): View =
+        LinearLayout(this).apply {
+            gravity = Gravity.CENTER_VERTICAL
+            orientation = LinearLayout.HORIZONTAL
+            val padding = dp(16)
+            setPadding(padding, padding, padding, padding / 2)
+            addView(
+                TextView(this@MainActivity).apply {
+                    text = getString(R.string.settings)
+                    setTextColor(getColor(android.R.color.white))
+                    textSize = 24f
+                },
+                LinearLayout.LayoutParams(
+                    0,
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                    1f
+                )
+            )
+            addView(
+                Button(this@MainActivity).apply {
+                    text = getString(R.string.close)
+                    setOnClickListener { dialog.dismiss() }
+                }
+            )
+        }
+
+    private fun LinearLayout.addSettingsSection(title: String) {
+        addView(
+            TextView(this@MainActivity).apply {
+                text = title
+                setTextColor(getColor(android.R.color.white))
+                textSize = 18f
+            },
+            LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply {
+                topMargin = dp(16)
+                bottomMargin = dp(8)
             }
-            .show()
+        )
+    }
+
+    private fun LinearLayout.addSettingsButton(text: String, onClick: () -> Unit) {
+        addView(
+            Button(this@MainActivity).apply {
+                this.text = text
+                gravity = Gravity.CENTER_VERTICAL or Gravity.START
+                setOnClickListener { onClick() }
+            },
+            LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply {
+                bottomMargin = dp(8)
+            }
+        )
+    }
+
+    private fun dp(value: Int): Int {
+        return (value * resources.displayMetrics.density).toInt()
     }
 
     private fun setOrientation(orientation: Int) {
