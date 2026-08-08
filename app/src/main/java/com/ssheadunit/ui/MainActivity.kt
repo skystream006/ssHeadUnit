@@ -13,12 +13,14 @@ import android.hardware.usb.UsbDevice
 import android.hardware.usb.UsbManager
 import android.os.Build
 import android.os.Bundle
+import android.text.InputType
 import android.view.MotionEvent
 import android.view.SurfaceHolder
 import android.view.SurfaceView
 import android.view.View
 import android.view.WindowManager
 import android.widget.Button
+import android.widget.EditText
 import android.widget.ScrollView
 import android.widget.TextView
 import com.ssheadunit.R
@@ -267,6 +269,7 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
         val preferences = getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
         val currentOrientation = preferences.getInt(PREFERENCE_ORIENTATION, ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE)
         val currentDpi = preferences.getInt(PREFERENCE_DPI, HeadUnitController.DEFAULT_VIDEO_DPI)
+            .coerceIn(HeadUnitController.MIN_VIDEO_DPI, HeadUnitController.MAX_VIDEO_DPI)
         val items = ORIENTATIONS.map { (orientation, label) ->
             val text = getString(R.string.orientation_option, getString(label))
             if (orientation == currentOrientation) getString(R.string.option_selected, text) else text
@@ -275,9 +278,12 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
             val text = getString(R.string.dpi_option, dpi)
             if (dpi == currentDpi) getString(R.string.option_selected, text) else text
         }
+        val customDpiText = getString(R.string.custom_dpi_option, currentDpi)
+        items += if (VIDEO_DPI_OPTIONS.contains(currentDpi)) customDpiText else getString(R.string.option_selected, customDpiText)
         items += getString(if (HeadUnitLog.enabled) R.string.debug_logging_on else R.string.debug_logging_off)
         items += getString(R.string.view_debug_log)
-        val debugIndex = ORIENTATIONS.size + VIDEO_DPI_OPTIONS.size
+        val customDpiIndex = ORIENTATIONS.size + VIDEO_DPI_OPTIONS.size
+        val debugIndex = customDpiIndex + 1
         val viewDebugLogIndex = debugIndex + 1
         AlertDialog.Builder(this)
             .setTitle(R.string.settings)
@@ -292,6 +298,7 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
                         setVideoDpi(VIDEO_DPI_OPTIONS[which - ORIENTATIONS.size])
                         showSettings()
                     }
+                    customDpiIndex -> showCustomDpiDialog(currentDpi)
                     debugIndex -> {
                         HeadUnitLog.setEnabled(applicationContext, !HeadUnitLog.enabled)
                         showSettings()
@@ -312,11 +319,34 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
     }
 
     private fun setVideoDpi(dpi: Int) {
+        val clampedDpi = dpi.coerceIn(HeadUnitController.MIN_VIDEO_DPI, HeadUnitController.MAX_VIDEO_DPI)
         getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
             .edit()
-            .putInt(PREFERENCE_DPI, dpi)
+            .putInt(PREFERENCE_DPI, clampedDpi)
             .apply()
-        HeadUnitController.setVideoDpi(dpi)
+        HeadUnitController.setVideoDpi(clampedDpi)
+    }
+
+    private fun showCustomDpiDialog(currentDpi: Int) {
+        val input = EditText(this).apply {
+            inputType = InputType.TYPE_CLASS_NUMBER
+            setText(currentDpi.toString())
+            setSelection(text.length)
+        }
+        AlertDialog.Builder(this)
+            .setTitle(R.string.custom_dpi_title)
+            .setView(input)
+            .setPositiveButton(android.R.string.ok) { _, _ ->
+                val enteredDpi = input.text?.toString()?.trim()?.toIntOrNull()
+                if (enteredDpi == null) {
+                    showCustomDpiDialog(currentDpi)
+                } else {
+                    setVideoDpi(enteredDpi)
+                    showSettings()
+                }
+            }
+            .setNegativeButton(android.R.string.cancel) { _, _ -> showSettings() }
+            .show()
     }
 
     private fun showDebugLog() {
