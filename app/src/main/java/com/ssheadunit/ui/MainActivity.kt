@@ -297,7 +297,7 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
             ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE,
             ActivityInfo.SCREEN_ORIENTATION_PORTRAIT,
         )
-        val currentOrientation = getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
+        val currentOrientation = getSharedPreferences(AppPreferences.PREFERENCES_NAME, Context.MODE_PRIVATE)
             .getInt(AppPreferences.PREFERENCE_ORIENTATION, ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE)
         val checkedItem = orientations.indexOf(currentOrientation).coerceAtLeast(0)
         AlertDialog.Builder(this)
@@ -306,7 +306,7 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
                 arrayOf(getString(R.string.orientation_landscape), getString(R.string.orientation_portrait)),
                 checkedItem,
             ) { dialog, which ->
-                getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
+                getSharedPreferences(AppPreferences.PREFERENCES_NAME, Context.MODE_PRIVATE)
                     .edit()
                     .putInt(AppPreferences.PREFERENCE_ORIENTATION, orientations[which])
                     .apply()
@@ -317,13 +317,13 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
     }
 
     private fun showDpiSettings() {
-        val currentDpi = getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
+        val currentDpi = getSharedPreferences(AppPreferences.PREFERENCES_NAME, Context.MODE_PRIVATE)
             .getInt(AppPreferences.PREFERENCE_DPI, AppPreferences.DEFAULT_DPI)
         val checkedItem = DPI_OPTIONS.indexOfFirst { it == currentDpi }.coerceAtLeast(0)
         AlertDialog.Builder(this)
             .setTitle(R.string.display_dpi)
             .setSingleChoiceItems(DPI_OPTION_LABELS, checkedItem) { dialog, which ->
-                getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
+                getSharedPreferences(AppPreferences.PREFERENCES_NAME, Context.MODE_PRIVATE)
                     .edit()
                     .putInt(AppPreferences.PREFERENCE_DPI, DPI_OPTIONS[which])
                     .apply()
@@ -333,7 +333,7 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
     }
 
     private fun applyOrientation() {
-        requestedOrientation = getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
+        requestedOrientation = getSharedPreferences(AppPreferences.PREFERENCES_NAME, Context.MODE_PRIVATE)
             .getInt(AppPreferences.PREFERENCE_ORIENTATION, ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE)
     }
 
@@ -352,7 +352,6 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
     private companion object {
         const val TAG = "MainActivity"
         const val ACTION_USB_PERMISSION = "com.ssheadunit.USB_PERMISSION"
-        const val PREFERENCES_NAME = AppPreferences.PREFERENCES_NAME
         private val DPI_OPTIONS = intArrayOf(120, 160, 240, 320)
         private val DPI_OPTION_LABELS = arrayOf("120 (ldpi)", "160 (mdpi)", "240 (hdpi)", "320 (xhdpi)")
 
