@@ -276,7 +276,7 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
         val currentDpi = preferences.getInt(PREFERENCE_DPI, HeadUnitController.DEFAULT_VIDEO_DPI)
             .coerceIn(HeadUnitController.MIN_VIDEO_DPI, HeadUnitController.MAX_VIDEO_DPI)
 
-        val settingsDialog = Dialog(this).apply settingsDialog@ {
+        val settingsDialog = Dialog(this, android.R.style.Theme_Material_NoActionBar_Fullscreen).apply settingsDialog@ {
             requestWindowFeature(Window.FEATURE_NO_TITLE)
             setContentView(
                 LinearLayout(this@MainActivity).apply {
@@ -359,13 +359,13 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
                 }
             )
         }
-        settingsDialog.show()
         settingsDialog.window?.setLayout(
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.MATCH_PARENT
         )
         @Suppress("DEPRECATION")
         settingsDialog.window?.decorView?.systemUiVisibility = immersiveModeFlags()
+        settingsDialog.show()
         enterImmersiveMode()
     }
 
