@@ -28,6 +28,8 @@ import android.view.WindowManager
 import android.widget.Button
 import android.widget.EditText
 import android.widget.LinearLayout
+import android.widget.RadioButton
+import android.widget.RadioGroup
 import android.widget.ScrollView
 import android.widget.TextView
 import com.ssheadunit.R
@@ -308,27 +310,18 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
                                             showSettings()
                                         }
                                     }
-                                    VIDEO_DPI_OPTIONS.forEach { dpi ->
-                                        val text = getString(R.string.dpi_option, dpi)
-                                        addSettingsButton(
-                                            if (dpi == currentDpi) getString(R.string.option_selected, text) else text
-                                        ) {
+                                    addDpiRadioGroup(
+                                        currentDpi,
+                                        onPresetSelected = { dpi ->
                                             this@settingsDialog.dismiss()
                                             setVideoDpi(dpi)
                                             showSettings()
+                                        },
+                                        onCustomSelected = {
+                                            this@settingsDialog.dismiss()
+                                            showCustomDpiDialog(currentDpi)
                                         }
-                                    }
-                                    val customDpiText = getString(R.string.custom_dpi_option, currentDpi)
-                                    addSettingsButton(
-                                        if (VIDEO_DPI_OPTIONS.contains(currentDpi)) {
-                                            customDpiText
-                                        } else {
-                                            getString(R.string.option_selected, customDpiText)
-                                        }
-                                    ) {
-                                        this@settingsDialog.dismiss()
-                                        showCustomDpiDialog(currentDpi)
-                                    }
+                                    )
 
                                     addSettingsSection(getString(R.string.settings_diagnostics))
                                     val debugLoggingEnabled = HeadUnitLog.enabled
@@ -433,6 +426,52 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
                 this.text = text
                 gravity = Gravity.CENTER_VERTICAL or Gravity.START
                 setOnClickListener { onClick() }
+            },
+            LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply {
+                bottomMargin = dpToPx(8)
+            }
+        )
+    }
+
+    private fun LinearLayout.addDpiRadioGroup(
+        currentDpi: Int,
+        onPresetSelected: (Int) -> Unit,
+        onCustomSelected: () -> Unit
+    ) {
+        addView(
+            RadioGroup(this@MainActivity).apply {
+                orientation = RadioGroup.VERTICAL
+                VIDEO_DPI_OPTIONS.forEach { dpi ->
+                    addView(
+                        RadioButton(this@MainActivity).apply {
+                            id = View.generateViewId()
+                            text = getString(R.string.dpi_option, dpi)
+                            setTextColor(getColor(android.R.color.white))
+                            isChecked = dpi == currentDpi
+                            setOnClickListener { onPresetSelected(dpi) }
+                        },
+                        RadioGroup.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT,
+                            ViewGroup.LayoutParams.WRAP_CONTENT
+                        )
+                    )
+                }
+                addView(
+                    RadioButton(this@MainActivity).apply {
+                        id = View.generateViewId()
+                        text = getString(R.string.custom_dpi_option, currentDpi)
+                        setTextColor(getColor(android.R.color.white))
+                        isChecked = !VIDEO_DPI_OPTIONS.contains(currentDpi)
+                        setOnClickListener { onCustomSelected() }
+                    },
+                    RadioGroup.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT
+                    )
+                )
             },
             LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
