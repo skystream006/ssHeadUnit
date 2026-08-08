@@ -267,11 +267,26 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
         )
         val currentOrientation = getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
             .getInt(PREFERENCE_ORIENTATION, ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE)
+        val loggingEnabled = HeadUnitLog.enabled
+        fun withSelection(isSelected: Boolean, label: String): String =
+            if (isSelected) "✓ $label" else label
         val items = arrayOf(
-            "${getString(R.string.display_orientation)}: ${getString(R.string.orientation_landscape)}",
-            "${getString(R.string.display_orientation)}: ${getString(R.string.orientation_portrait)}",
-            "${getString(R.string.debug_logging)}: ${getString(R.string.enabled)}",
-            "${getString(R.string.debug_logging)}: ${getString(R.string.disabled)}",
+            withSelection(
+                currentOrientation == ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE,
+                "${getString(R.string.display_orientation)}: ${getString(R.string.orientation_landscape)}",
+            ),
+            withSelection(
+                currentOrientation == ActivityInfo.SCREEN_ORIENTATION_PORTRAIT,
+                "${getString(R.string.display_orientation)}: ${getString(R.string.orientation_portrait)}",
+            ),
+            withSelection(
+                loggingEnabled,
+                "${getString(R.string.debug_logging)}: ${getString(R.string.enabled)}",
+            ),
+            withSelection(
+                !loggingEnabled,
+                "${getString(R.string.debug_logging)}: ${getString(R.string.disabled)}",
+            ),
         )
         AlertDialog.Builder(this)
             .setTitle(R.string.settings)
