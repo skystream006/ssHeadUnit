@@ -480,9 +480,7 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
                         ViewGroup.LayoutParams.WRAP_CONTENT
                     )
                 )
-                if (selectedId != View.NO_ID) {
-                    check(selectedId)
-                }
+                check(selectedId)
                 setOnCheckedChangeListener { _, checkedId ->
                     selectionHandlers[checkedId]?.invoke()
                 }
