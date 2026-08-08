@@ -278,7 +278,10 @@ class UsbTransport(
         /** How many immediate read failures are tolerated before the link is declared dead. */
         const val MAX_CONSECUTIVE_ERRORS = 10
 
+        /** USB standard request code for CLEAR_FEATURE. */
         const val USB_REQUEST_CLEAR_FEATURE = 1
+
+        /** USB feature selector for ENDPOINT_HALT. */
         const val USB_FEATURE_ENDPOINT_HALT = 0
     }
 }
