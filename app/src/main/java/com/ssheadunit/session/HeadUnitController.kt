@@ -23,10 +23,14 @@ object HeadUnitController : HeadUnitListener {
     /** Projected display size; the phone renders its UI at exactly this resolution. */
     const val VIDEO_WIDTH = 1280
     const val VIDEO_HEIGHT = 720
+    const val MIN_VIDEO_DPI = 120
+    const val DEFAULT_VIDEO_DPI = 160
+    const val MAX_VIDEO_DPI = 280
 
     private val videoRenderer = VideoRenderer()
     private val audioPlayer = AudioPlayer()
-    private val config = HeadUnitConfig(touchWidth = VIDEO_WIDTH, touchHeight = VIDEO_HEIGHT)
+    @Volatile
+    private var videoDpi: Int = DEFAULT_VIDEO_DPI
 
     private var transport: Transport? = null
     private var session: HeadUnitSession? = null
@@ -55,7 +59,7 @@ object HeadUnitController : HeadUnitListener {
                 val sslContext = HeadUnitCredentials.createSslContext(context)
                 val link = Aoap.openTransport(manager, device)
                 transport = link
-                val newSession = HeadUnitSession(link, sslContext, config, this)
+                val newSession = HeadUnitSession(link, sslContext, currentConfig(), this)
                 session = newSession
                 publish("Connecting to phone…", connected = false)
                 sessionThread = Thread({ newSession.run() }, "aa-session").apply { start() }
@@ -125,6 +129,10 @@ object HeadUnitController : HeadUnitListener {
         session?.sendNightMode(night)
     }
 
+    fun setVideoDpi(dpi: Int) {
+        videoDpi = dpi.coerceIn(MIN_VIDEO_DPI, MAX_VIDEO_DPI)
+    }
+
     // --- session callbacks --------------------------------------------------------------------
 
     override fun onConnected() {
@@ -192,6 +200,16 @@ object HeadUnitController : HeadUnitListener {
         status = text
         statusListener?.invoke(text, connected)
     }
+
+    private fun currentConfig(): HeadUnitConfig = HeadUnitConfig(
+        video = Messages.VideoConfig(
+            resolution = Messages.VideoResolution.RES_720p,
+            fps = Messages.VideoFps.FPS_60,
+            dpi = videoDpi
+        ),
+        touchWidth = VIDEO_WIDTH,
+        touchHeight = VIDEO_HEIGHT
+    )
 
     private const val THREAD_JOIN_MS = 1000L
 }

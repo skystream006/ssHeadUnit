@@ -13,6 +13,9 @@
     <string name="orientation_landscape">Landscape</string>
     <string name="orientation_portrait">Portrait</string>
     <string name="orientation_option">Display orientation: %1$s</string>
+    <string name="dpi_option">Display DPI: %1$d</string>
+    <string name="custom_dpi_option">Custom DPI: %1$d</string>
+    <string name="custom_dpi_title">Enter custom DPI</string>
     <string name="option_selected">%1$s ✓</string>
     <string name="debug_logging_on">Debug logging: on</string>
     <string name="debug_logging_off">Debug logging: off</string>

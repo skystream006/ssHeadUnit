@@ -63,8 +63,8 @@ The generated identity is retained until the app's data is cleared.
 ## Usage
 
 1. Install the APK on the tablet and grant the USB permission when prompted.
-2. Before connecting, use **Settings** to select landscape or portrait display orientation, or to
-   turn on debug logging.
+2. Before connecting, use **Settings** to select landscape or portrait display orientation, pick a
+   display DPI, or turn on debug logging.
 3. Connect the phone. The tablet requests accessory mode, and Android Auto starts on the phone.
 4. The projected UI is shown full screen; touches are forwarded to the phone.
 5. Unplugging the phone ends the session and stops the foreground service.
