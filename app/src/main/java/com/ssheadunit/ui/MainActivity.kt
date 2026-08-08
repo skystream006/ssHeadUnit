@@ -261,51 +261,36 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
     }
 
     private fun showSettings() {
-        val items = arrayOf(
-            getString(R.string.display_orientation),
-            getString(if (HeadUnitLog.enabled) R.string.debug_logging_on else R.string.debug_logging_off)
-        )
-        AlertDialog.Builder(this)
-            .setTitle(R.string.settings)
-            .setItems(items) { dialog, which ->
-                dialog.dismiss()
-                if (which == 0) showOrientationSettings() else showLoggingSettings()
-            }
-            .show()
-    }
-
-    /** Debug logging is off by default and can be turned on to diagnose a connection. */
-    private fun showLoggingSettings() {
-        val options = arrayOf(getString(R.string.disabled), getString(R.string.enabled))
-        AlertDialog.Builder(this)
-            .setTitle(R.string.debug_logging)
-            .setSingleChoiceItems(options, if (HeadUnitLog.enabled) 1 else 0) { dialog, which ->
-                HeadUnitLog.setEnabled(applicationContext, which == 1)
-                dialog.dismiss()
-            }
-            .show()
-    }
-
-    private fun showOrientationSettings() {
         val orientations = intArrayOf(
             ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE,
             ActivityInfo.SCREEN_ORIENTATION_PORTRAIT,
         )
         val currentOrientation = getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
             .getInt(PREFERENCE_ORIENTATION, ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE)
-        val checkedItem = orientations.indexOf(currentOrientation).coerceAtLeast(0)
+        val items = arrayOf(
+            "${getString(R.string.display_orientation)}: ${getString(R.string.orientation_landscape)}",
+            "${getString(R.string.display_orientation)}: ${getString(R.string.orientation_portrait)}",
+            "${getString(R.string.debug_logging)}: ${getString(R.string.enabled)}",
+            "${getString(R.string.debug_logging)}: ${getString(R.string.disabled)}",
+        )
         AlertDialog.Builder(this)
-            .setTitle(R.string.display_orientation)
-            .setSingleChoiceItems(
-                arrayOf(getString(R.string.orientation_landscape), getString(R.string.orientation_portrait)),
-                checkedItem,
-            ) { dialog, which ->
-                getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
-                    .edit()
-                    .putInt(PREFERENCE_ORIENTATION, orientations[which])
-                    .apply()
-                requestedOrientation = orientations[which]
+            .setTitle(R.string.settings)
+            .setItems(items) { dialog, which ->
                 dialog.dismiss()
+                when (which) {
+                    0, 1 -> {
+                        val orientation = orientations[which]
+                        if (currentOrientation != orientation) {
+                            getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
+                                .edit()
+                                .putInt(PREFERENCE_ORIENTATION, orientation)
+                                .apply()
+                            requestedOrientation = orientation
+                        }
+                    }
+                    2 -> if (!HeadUnitLog.enabled) HeadUnitLog.setEnabled(applicationContext, true)
+                    3 -> if (HeadUnitLog.enabled) HeadUnitLog.setEnabled(applicationContext, false)
+                }
             }
             .show()
     }
