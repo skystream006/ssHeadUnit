@@ -85,12 +85,12 @@ object HeadUnitLog {
         val file = logFile ?: return
         runCatching {
             if (file.length() > MAX_LOG_SIZE_BYTES) {
-                file.writeText("--- Previous debug log rotated after reaching 1 MB ---\n")
+                file.writeText("--- Previous debug log rotated after reaching the size limit ---\n")
             }
             val throwable = error?.let {
                 StringWriter().also { writer -> it.printStackTrace(PrintWriter(writer)) }.toString()
             }.orEmpty()
-            file.appendText("${timestampFormat.format(Date())} $level/$tag: $message\n$throwable")
+            file.appendText("${timestamp().format(Date())} $level/$tag: $message\n$throwable")
         }
     }
 
@@ -98,5 +98,5 @@ object HeadUnitLog {
     private const val LOG_FILE_NAME = "debug.log"
     private const val MAX_LOG_SIZE_BYTES = 1_000_000L
     private val lock = Any()
-    private val timestampFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.US)
+    private fun timestamp() = SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.US)
 }
