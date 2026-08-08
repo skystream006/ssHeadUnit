@@ -278,6 +278,7 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
         items += getString(if (HeadUnitLog.enabled) R.string.debug_logging_on else R.string.debug_logging_off)
         items += getString(R.string.view_debug_log)
         val debugIndex = ORIENTATIONS.size + VIDEO_DPI_OPTIONS.size
+        val viewDebugLogIndex = debugIndex + 1
         AlertDialog.Builder(this)
             .setTitle(R.string.settings)
             .setItems(items.toTypedArray()) { dialog, which ->
@@ -295,7 +296,7 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
                         HeadUnitLog.setEnabled(applicationContext, !HeadUnitLog.enabled)
                         showSettings()
                     }
-                    else -> showDebugLog()
+                    viewDebugLogIndex -> showDebugLog()
                 }
             }
             .show()
