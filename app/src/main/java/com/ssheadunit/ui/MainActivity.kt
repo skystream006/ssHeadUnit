@@ -19,6 +19,7 @@ import android.view.SurfaceView
 import android.view.View
 import android.view.WindowManager
 import android.widget.Button
+import android.widget.ScrollView
 import android.widget.TextView
 import com.ssheadunit.R
 import com.ssheadunit.session.HeadUnitController
@@ -263,13 +264,18 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
     private fun showSettings() {
         val items = arrayOf(
             getString(R.string.display_orientation),
-            getString(if (HeadUnitLog.enabled) R.string.debug_logging_on else R.string.debug_logging_off)
+            getString(if (HeadUnitLog.enabled) R.string.debug_logging_on else R.string.debug_logging_off),
+            getString(R.string.view_debug_log),
         )
         AlertDialog.Builder(this)
             .setTitle(R.string.settings)
             .setItems(items) { dialog, which ->
                 dialog.dismiss()
-                if (which == 0) showOrientationSettings() else showLoggingSettings()
+                when (which) {
+                    0 -> showOrientationSettings()
+                    1 -> showLoggingSettings()
+                    2 -> showDebugLog()
+                }
             }
             .show()
     }
@@ -284,6 +290,26 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
                 dialog.dismiss()
             }
             .show()
+    }
+
+    private fun showDebugLog() {
+        Thread({
+            val log = HeadUnitLog.read(applicationContext)
+                .ifBlank { getString(R.string.debug_log_empty) }
+            runOnUiThread {
+                if (isFinishing || (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1 && isDestroyed)) return@runOnUiThread
+                val logView = TextView(this).apply {
+                    setTextIsSelectable(true)
+                    setPadding(32, 32, 32, 32)
+                    text = log
+                }
+                AlertDialog.Builder(this)
+                    .setTitle(R.string.debug_log)
+                    .setView(ScrollView(this).apply { addView(logView) })
+                    .setPositiveButton(android.R.string.ok, null)
+                    .show()
+            }
+        }, "debug-log-reader").start()
     }
 
     private fun showOrientationSettings() {
