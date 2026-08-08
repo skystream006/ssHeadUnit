@@ -353,8 +353,8 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
         const val TAG = "MainActivity"
         const val ACTION_USB_PERMISSION = "com.ssheadunit.USB_PERMISSION"
         const val PREFERENCES_NAME = AppPreferences.PREFERENCES_NAME
-        val DPI_OPTIONS = intArrayOf(120, 160, 240, 320)
-        val DPI_OPTION_LABELS = arrayOf("120 (ldpi)", "160 (mdpi)", "240 (hdpi)", "320 (xhdpi)")
+        private val DPI_OPTIONS = intArrayOf(120, 160, 240, 320)
+        private val DPI_OPTION_LABELS = arrayOf("120 (ldpi)", "160 (mdpi)", "240 (hdpi)", "320 (xhdpi)")
 
         /** How long a device is given to re-enumerate after an accessory mode switch. */
         const val RE_ENUMERATION_TIMEOUT_MS = 20_000L
