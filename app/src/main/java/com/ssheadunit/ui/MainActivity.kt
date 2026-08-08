@@ -295,14 +295,13 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
     private fun showDebugLog() {
         Thread({
             val log = HeadUnitLog.read(applicationContext)
-                .ifBlank { getString(R.string.debug_log_empty) }
             runOnUiThread {
-                if (isFinishing || (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1 && isDestroyed)) return@runOnUiThread
+                if (isFinishing || isDestroyed) return@runOnUiThread
                 val padding = resources.getDimensionPixelSize(R.dimen.debug_log_padding)
                 val logView = TextView(this).apply {
                     setTextIsSelectable(true)
                     setPadding(padding, padding, padding, padding)
-                    text = log
+                    text = log.ifBlank { getString(R.string.debug_log_empty) }
                 }
                 AlertDialog.Builder(this)
                     .setTitle(R.string.debug_log)
