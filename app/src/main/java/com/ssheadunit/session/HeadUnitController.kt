@@ -10,6 +10,7 @@ import com.ssheadunit.av.VideoRenderer
 import com.ssheadunit.protocol.Messages
 import com.ssheadunit.transport.Aoap
 import com.ssheadunit.transport.Transport
+import com.ssheadunit.ui.MainActivity
 import com.ssheadunit.util.HeadUnitLog
 
 /**
@@ -26,8 +27,6 @@ object HeadUnitController : HeadUnitListener {
 
     private val videoRenderer = VideoRenderer()
     private val audioPlayer = AudioPlayer()
-    private val config = HeadUnitConfig(touchWidth = VIDEO_WIDTH, touchHeight = VIDEO_HEIGHT)
-
     private var transport: Transport? = null
     private var session: HeadUnitSession? = null
     private var sessionThread: Thread? = null
@@ -55,7 +54,7 @@ object HeadUnitController : HeadUnitListener {
                 val sslContext = HeadUnitCredentials.createSslContext(context)
                 val link = Aoap.openTransport(manager, device)
                 transport = link
-                val newSession = HeadUnitSession(link, sslContext, config, this)
+                val newSession = HeadUnitSession(link, sslContext, loadConfig(context), this)
                 session = newSession
                 publish("Connecting to phone…", connected = false)
                 sessionThread = Thread({ newSession.run() }, "aa-session").apply { start() }
@@ -191,6 +190,20 @@ object HeadUnitController : HeadUnitListener {
     private fun publish(text: String, connected: Boolean) {
         status = text
         statusListener?.invoke(text, connected)
+    }
+
+    private fun loadConfig(context: Context): HeadUnitConfig {
+        val dpi = context.getSharedPreferences(MainActivity.PREFERENCES_NAME, Context.MODE_PRIVATE)
+            .getInt(MainActivity.PREFERENCE_DPI, MainActivity.DEFAULT_DPI)
+        return HeadUnitConfig(
+            touchWidth = VIDEO_WIDTH,
+            touchHeight = VIDEO_HEIGHT,
+            video = Messages.VideoConfig(
+                resolution = Messages.VideoResolution.RES_720p,
+                fps = Messages.VideoFps.FPS_60,
+                dpi = dpi
+            )
+        )
     }
 
     private const val THREAD_JOIN_MS = 1000L

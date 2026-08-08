@@ -63,8 +63,8 @@ The generated identity is retained until the app's data is cleared.
 ## Usage
 
 1. Install the APK on the tablet and grant the USB permission when prompted.
-2. Before connecting, use **Settings** to select landscape or portrait display orientation, or to
-   turn on debug logging.
+2. Before connecting, use **Settings** to select display orientation, choose display DPI, or turn
+   on debug logging.
 3. Connect the phone. The tablet requests accessory mode, and Android Auto starts on the phone.
 4. The projected UI is shown full screen; touches are forwarded to the phone.
 5. Unplugging the phone ends the session and stops the foreground service.
@@ -99,8 +99,8 @@ watchdog that fired are all logged.
 ## Notes
 
 * Debug logging is off by default; warnings and errors are always logged.
-* Video is projected at 1280x720 by default; the resolution, DPI and head unit identity can be
-  changed in `HeadUnitConfig` / `HeadUnitController`.
+* Video is projected at 1280x720 by default; DPI can be changed in **Settings** and other video or
+  head unit identity values can be changed in `HeadUnitConfig` / `HeadUnitController`.
 * The wireless (Wi-Fi) projection transport is not implemented; the app uses USB only.
 * Android Auto is a trademark of Google LLC. This project is not affiliated with or endorsed by
   Google, and you are responsible for using it in compliance with the applicable terms.

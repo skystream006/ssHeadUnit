@@ -263,13 +263,18 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
     private fun showSettings() {
         val items = arrayOf(
             getString(R.string.display_orientation),
+            getString(R.string.display_dpi),
             getString(if (HeadUnitLog.enabled) R.string.debug_logging_on else R.string.debug_logging_off)
         )
         AlertDialog.Builder(this)
             .setTitle(R.string.settings)
             .setItems(items) { dialog, which ->
                 dialog.dismiss()
-                if (which == 0) showOrientationSettings() else showLoggingSettings()
+                when (which) {
+                    0 -> showOrientationSettings()
+                    1 -> showDpiSettings()
+                    else -> showLoggingSettings()
+                }
             }
             .show()
     }
@@ -310,6 +315,22 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
             .show()
     }
 
+    private fun showDpiSettings() {
+        val currentDpi = getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
+            .getInt(PREFERENCE_DPI, DEFAULT_DPI)
+        val checkedItem = DPI_OPTIONS.indexOf(currentDpi).coerceAtLeast(0)
+        AlertDialog.Builder(this)
+            .setTitle(R.string.display_dpi)
+            .setSingleChoiceItems(DPI_OPTIONS.map { it.toString() }.toTypedArray(), checkedItem) { dialog, which ->
+                getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
+                    .edit()
+                    .putInt(PREFERENCE_DPI, DPI_OPTIONS[which])
+                    .apply()
+                dialog.dismiss()
+            }
+            .show()
+    }
+
     private fun applyOrientation() {
         requestedOrientation = getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
             .getInt(PREFERENCE_ORIENTATION, ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE)
@@ -332,6 +353,9 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
         const val ACTION_USB_PERMISSION = "com.ssheadunit.USB_PERMISSION"
         const val PREFERENCES_NAME = "settings"
         const val PREFERENCE_ORIENTATION = "orientation"
+        const val PREFERENCE_DPI = "dpi"
+        const val DEFAULT_DPI = 160
+        val DPI_OPTIONS = intArrayOf(120, 160, 240, 320)
 
         /** How long a device is given to re-enumerate after an accessory mode switch. */
         const val RE_ENUMERATION_TIMEOUT_MS = 20_000L
