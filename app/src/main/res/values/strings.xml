@@ -16,6 +16,9 @@
     <string name="debug_logging">Debug logging</string>
     <string name="debug_logging_on">Debug logging: on</string>
     <string name="debug_logging_off">Debug logging: off</string>
+    <string name="view_debug_log">View debug log</string>
+    <string name="debug_log">Debug log</string>
+    <string name="debug_log_empty">No diagnostic records yet.</string>
     <string name="enabled">On</string>
     <string name="disabled">Off</string>
 </resources>

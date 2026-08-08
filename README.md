@@ -92,9 +92,9 @@ adapter also validates the head unit certificate, so a generated `headunit.p12` 
 rejected. Every stage of the session is now bounded by a timeout, so an adapter that stops
 answering ends the session with a reason on screen instead of hanging.
 
-If a connection still fails, turn on **Settings → Debug logging** and capture logcat: the USB
-descriptors, the selected interface, the negotiated protocol version, the session phase and the
-watchdog that fired are all logged.
+If a connection still fails, turn on **Settings → Debug logging**. The USB descriptors, the selected
+interface, the negotiated protocol version, the session phase and the watchdog that fired are saved
+in the app's private debug log. Open **Settings → View debug log** to read it.
 
 ## Notes
 
