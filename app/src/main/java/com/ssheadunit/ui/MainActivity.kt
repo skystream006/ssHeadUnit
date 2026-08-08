@@ -261,35 +261,35 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
         settingsButton.visibility = if (HeadUnitController.isConnected) View.GONE else View.VISIBLE
     }
 
+    /** Every setting is listed directly here so no nested dialogs are needed. */
     private fun showSettings() {
-        val items = arrayOf(
-            getString(R.string.display_orientation),
-            getString(if (HeadUnitLog.enabled) R.string.debug_logging_on else R.string.debug_logging_off),
-            getString(R.string.view_debug_log),
-        )
+        val currentOrientation = getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
+            .getInt(PREFERENCE_ORIENTATION, ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE)
+        val items = ORIENTATIONS.map { (orientation, label) ->
+            val text = getString(R.string.orientation_option, getString(label))
+            if (orientation == currentOrientation) getString(R.string.option_selected, text) else text
+        }.toMutableList()
+        items += getString(if (HeadUnitLog.enabled) R.string.debug_logging_on else R.string.debug_logging_off)
+        items += getString(R.string.view_debug_log)
         AlertDialog.Builder(this)
             .setTitle(R.string.settings)
-            .setItems(items) { dialog, which ->
+            .setItems(items.toTypedArray()) { dialog, which ->
                 dialog.dismiss()
                 when (which) {
-                    0 -> showOrientationSettings()
-                    1 -> showLoggingSettings()
-                    2 -> showDebugLog()
+                    in ORIENTATIONS.indices -> setOrientation(ORIENTATIONS[which].first)
+                    ORIENTATIONS.size -> HeadUnitLog.setEnabled(applicationContext, !HeadUnitLog.enabled)
+                    else -> showDebugLog()
                 }
             }
             .show()
     }
 
-    /** Debug logging is off by default and can be turned on to diagnose a connection. */
-    private fun showLoggingSettings() {
-        val options = arrayOf(getString(R.string.disabled), getString(R.string.enabled))
-        AlertDialog.Builder(this)
-            .setTitle(R.string.debug_logging)
-            .setSingleChoiceItems(options, if (HeadUnitLog.enabled) 1 else 0) { dialog, which ->
-                HeadUnitLog.setEnabled(applicationContext, which == 1)
-                dialog.dismiss()
-            }
-            .show()
+    private fun setOrientation(orientation: Int) {
+        getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .putInt(PREFERENCE_ORIENTATION, orientation)
+            .apply()
+        requestedOrientation = orientation
     }
 
     private fun showDebugLog() {
@@ -310,30 +310,6 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
                     .show()
             }
         }, "debug-log-reader").start()
-    }
-
-    private fun showOrientationSettings() {
-        val orientations = intArrayOf(
-            ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE,
-            ActivityInfo.SCREEN_ORIENTATION_PORTRAIT,
-        )
-        val currentOrientation = getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
-            .getInt(PREFERENCE_ORIENTATION, ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE)
-        val checkedItem = orientations.indexOf(currentOrientation).coerceAtLeast(0)
-        AlertDialog.Builder(this)
-            .setTitle(R.string.display_orientation)
-            .setSingleChoiceItems(
-                arrayOf(getString(R.string.orientation_landscape), getString(R.string.orientation_portrait)),
-                checkedItem,
-            ) { dialog, which ->
-                getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
-                    .edit()
-                    .putInt(PREFERENCE_ORIENTATION, orientations[which])
-                    .apply()
-                requestedOrientation = orientations[which]
-                dialog.dismiss()
-            }
-            .show()
     }
 
     private fun applyOrientation() {
@@ -358,6 +334,11 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
         const val ACTION_USB_PERMISSION = "com.ssheadunit.USB_PERMISSION"
         const val PREFERENCES_NAME = "settings"
         const val PREFERENCE_ORIENTATION = "orientation"
+
+        val ORIENTATIONS = listOf(
+            ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE to R.string.orientation_landscape,
+            ActivityInfo.SCREEN_ORIENTATION_PORTRAIT to R.string.orientation_portrait,
+        )
 
         /** How long a device is given to re-enumerate after an accessory mode switch. */
         const val RE_ENUMERATION_TIMEOUT_MS = 20_000L

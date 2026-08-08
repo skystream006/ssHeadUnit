@@ -10,15 +10,13 @@
     <string name="status_not_supported">This device does not support Android Auto projection</string>
     <string name="notification_running">Android Auto projection is running</string>
     <string name="settings">Settings</string>
-    <string name="display_orientation">Display orientation</string>
     <string name="orientation_landscape">Landscape</string>
     <string name="orientation_portrait">Portrait</string>
-    <string name="debug_logging">Debug logging</string>
+    <string name="orientation_option">Display orientation: %1$s</string>
+    <string name="option_selected">%1$s ✓</string>
     <string name="debug_logging_on">Debug logging: on</string>
     <string name="debug_logging_off">Debug logging: off</string>
     <string name="view_debug_log">View debug log</string>
     <string name="debug_log">Debug log</string>
     <string name="debug_log_empty">No diagnostic records yet.</string>
-    <string name="enabled">On</string>
-    <string name="disabled">Off</string>
 </resources>
