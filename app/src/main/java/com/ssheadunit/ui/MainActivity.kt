@@ -22,6 +22,7 @@ import android.view.SurfaceHolder
 import android.view.SurfaceView
 import android.view.View
 import android.view.ViewGroup
+import android.view.ViewTreeObserver
 import android.view.Window
 import android.view.WindowManager
 import android.widget.Button
@@ -368,10 +369,16 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
         settingsDialog.window?.decorView?.let { decorView ->
             @Suppress("DEPRECATION")
             decorView.systemUiVisibility = immersiveModeFlags()
-            decorView.viewTreeObserver.addOnWindowFocusChangeListener { hasFocus ->
+            val focusListener = ViewTreeObserver.OnWindowFocusChangeListener { hasFocus ->
                 if (hasFocus) {
                     @Suppress("DEPRECATION")
                     decorView.systemUiVisibility = immersiveModeFlags()
+                }
+            }
+            decorView.viewTreeObserver.addOnWindowFocusChangeListener(focusListener)
+            settingsDialog.setOnDismissListener {
+                if (decorView.viewTreeObserver.isAlive) {
+                    decorView.viewTreeObserver.removeOnWindowFocusChangeListener(focusListener)
                 }
             }
         }
