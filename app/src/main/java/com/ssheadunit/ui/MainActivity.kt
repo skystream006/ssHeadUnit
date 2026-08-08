@@ -555,17 +555,7 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
                 AlertDialog.Builder(this)
                     .setTitle(R.string.debug_log)
                     .setView(ScrollView(this).apply { addView(logView) })
-                    .setNegativeButton(R.string.share_debug_log) { _, _ ->
-                        startActivity(
-                            Intent.createChooser(
-                                Intent(Intent.ACTION_SEND)
-                                    .setType("text/plain")
-                                    .putExtra(Intent.EXTRA_TEXT, log),
-                                getString(R.string.share_debug_log)
-                            )
-                        )
-                    }
-                    .setNeutralButton(R.string.clear_debug_log) { _, _ ->
+                    .setNegativeButton(R.string.clear_debug_log) { _, _ ->
                         Thread({
                             HeadUnitLog.clear(applicationContext)
                             runOnUiThread {
@@ -574,6 +564,16 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
                                 }
                             }
                         }, "debug-log-clearer").start()
+                    }
+                    .setNeutralButton(R.string.share_debug_log) { _, _ ->
+                        startActivity(
+                            Intent.createChooser(
+                                Intent(Intent.ACTION_SEND)
+                                    .setType("text/plain")
+                                    .putExtra(Intent.EXTRA_TEXT, log),
+                                getString(R.string.share_debug_log)
+                            )
+                        )
                     }
                     .setPositiveButton(android.R.string.ok, null)
                     .show()
