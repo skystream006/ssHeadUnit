@@ -94,7 +94,7 @@ answering ends the session with a reason on screen instead of hanging.
 
 If a connection still fails, turn on **Settings → Debug logging**. The USB descriptors, the selected
 interface, the negotiated protocol version, the session phase and the watchdog that fired are saved
-in the app's private debug log. Open **Settings → View debug log** to read it.
+in the app's private debug log. Open **Settings → View debug log** to read, clear, or share it.
 
 ## Notes
 

@@ -81,6 +81,12 @@ object HeadUnitLog {
         if (file.isFile) file.readText() else ""
     }
 
+    /** Removes all app-private diagnostic records. */
+    fun clear(context: Context) = synchronized(lock) {
+        val file = logFile ?: File(context.applicationContext.filesDir, LOG_FILE_NAME)
+        if (file.isFile) file.delete()
+    }
+
     private fun write(tag: String, level: String, message: String, error: Throwable? = null) {
         synchronized(lock) {
             val file = logFile ?: return
