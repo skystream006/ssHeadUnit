@@ -314,8 +314,9 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
         )
         AlertDialog.Builder(this)
             .setTitle(R.string.settings)
-            .setItems(items.map { it.label }.toTypedArray()) { _, which ->
+            .setItems(items.map { it.label }.toTypedArray()) { dialog, which ->
                 items[which].onSelect()
+                dialog.dismiss()
             }
             .show()
     }
