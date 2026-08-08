@@ -130,19 +130,35 @@ object Aoap {
             HeadUnitLog.i(TAG, "AOAP protocol version $protocolVersion")
             if (protocolVersion < 1) return SwitchResult.INCONCLUSIVE
 
-            sendString(connection, INDEX_MANUFACTURER, MANUFACTURER)
-            sendString(connection, INDEX_MODEL, MODEL)
-            sendString(connection, INDEX_DESCRIPTION, DESCRIPTION)
-            sendString(connection, INDEX_VERSION, VERSION)
-            sendString(connection, INDEX_URI, URI)
-            sendString(connection, INDEX_SERIAL, SERIAL)
+            // A partial identification (e.g. manufacturer sent but model missing) can cause the
+            // phone to ignore the accessory start request or fail to switch into accessory mode,
+            // so the whole switch is aborted as soon as one of the strings fails to send.
+            val identified =
+                sendString(connection, INDEX_MANUFACTURER, MANUFACTURER) &&
+                    sendString(connection, INDEX_MODEL, MODEL) &&
+                    sendString(connection, INDEX_DESCRIPTION, DESCRIPTION) &&
+                    sendString(connection, INDEX_VERSION, VERSION) &&
+                    sendString(connection, INDEX_URI, URI) &&
+                    sendString(connection, INDEX_SERIAL, SERIAL)
+            if (!identified) {
+                HeadUnitLog.w(TAG, "Aborting accessory switch; not all identification strings were accepted")
+                return SwitchResult.INCONCLUSIVE
+            }
 
             val started = connection.controlTransfer(
                 UsbConstants.USB_DIR_OUT or UsbConstants.USB_TYPE_VENDOR,
                 REQUEST_START, 0, 0, null, 0, CONTROL_TIMEOUT_MS
             )
             HeadUnitLog.i(TAG, "Accessory start result $started")
-            return if (started >= 0) SwitchResult.SWITCHED else SwitchResult.INCONCLUSIVE
+            if (started < 0) return SwitchResult.INCONCLUSIVE
+            // Give the device a moment to begin re-enumerating before the caller's polling loop
+            // starts looking for it.
+            try {
+                Thread.sleep(ACCESSORY_START_GRACE_MS)
+            } catch (e: InterruptedException) {
+                Thread.currentThread().interrupt()
+            }
+            return SwitchResult.SWITCHED
         } finally {
             connection.close()
         }
@@ -171,15 +187,34 @@ object Aoap {
     private fun endpointAt(iface: UsbInterface, address: Int): UsbEndpoint? =
         (0 until iface.endpointCount).map { iface.getEndpoint(it) }.firstOrNull { it.address == address }
 
-    private fun sendString(connection: UsbDeviceConnection, index: Int, value: String) {
+    /** Sends one AOAP identification string; returns false if the transfer itself failed. */
+    private fun sendString(connection: UsbDeviceConnection, index: Int, value: String): Boolean {
         val bytes = (value + "\u0000").toByteArray(Charsets.UTF_8)
-        connection.controlTransfer(
+        val len = connection.controlTransfer(
             UsbConstants.USB_DIR_OUT or UsbConstants.USB_TYPE_VENDOR,
             REQUEST_SEND_STRING, 0, index, bytes, bytes.size, CONTROL_TIMEOUT_MS
         )
+        if (len < 0) {
+            // Negative means the USB transfer itself failed (e.g. device disconnected or timed
+            // out); sending the accessory start request afterwards would be pointless.
+            HeadUnitLog.w(TAG, "Error sending accessory string index=$index \"$value\" (result=$len)")
+            return false
+        }
+        // len == bytes.size is the ideal ACK. Some phones return 0 for a successful OUT control
+        // transfer (they accept the data but report 0 bytes in the data stage), so any
+        // non-negative result is treated as success.
+        if (len != bytes.size) {
+            HeadUnitLog.w(TAG, "Unexpected accessory string result len=$len (expected ${bytes.size}) index=$index \"$value\"")
+        } else {
+            HeadUnitLog.i(TAG, "Sent accessory string index=$index \"$value\"")
+        }
+        return true
     }
 
     private const val CONTROL_TIMEOUT_MS = 1000
+
+    /** Grace period after ACC_REQ_START to let the device begin re-enumerating. */
+    private const val ACCESSORY_START_GRACE_MS = 500L
 }
 
 /**
