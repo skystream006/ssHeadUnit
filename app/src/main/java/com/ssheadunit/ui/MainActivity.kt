@@ -566,14 +566,21 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
                         }, "debug-log-clearer").start()
                     }
                     .setNeutralButton(R.string.share_debug_log) { _, _ ->
-                        startActivity(
-                            Intent.createChooser(
-                                Intent(Intent.ACTION_SEND)
-                                    .setType("text/plain")
-                                    .putExtra(Intent.EXTRA_TEXT, log),
-                                getString(R.string.share_debug_log)
+                        Thread({
+                            val currentLog = HeadUnitLog.read(applicationContext)
+                            runOnUiThread {
+                                if (!isFinishing && !isDestroyed) {
+                                    startActivity(
+                                        Intent.createChooser(
+                                            Intent(Intent.ACTION_SEND)
+                                                .setType("text/plain")
+                                                .putExtra(Intent.EXTRA_TEXT, currentLog),
+                                            getString(R.string.share_debug_log)
+                                        )
+                                    )
+                                }
                             )
-                        )
+                        }, "debug-log-sharer").start()
                     }
                     .setPositiveButton(android.R.string.ok, null)
                     .show()
