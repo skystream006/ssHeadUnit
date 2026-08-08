@@ -375,7 +375,7 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
         )
         val VIDEO_DPI_OPTIONS = listOf(
             HeadUnitController.MIN_VIDEO_DPI,
-            160,
+            HeadUnitController.DEFAULT_VIDEO_DPI,
             200,
             240,
             HeadUnitController.MAX_VIDEO_DPI
