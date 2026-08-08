@@ -32,6 +32,7 @@ import android.widget.RadioButton
 import android.widget.RadioGroup
 import android.widget.ScrollView
 import android.widget.TextView
+import com.ssheadunit.BuildConfig
 import com.ssheadunit.R
 import com.ssheadunit.session.HeadUnitController
 import com.ssheadunit.session.HeadUnitCredentials
@@ -350,6 +351,14 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
                             0,
                             1f
                         )
+                    )
+                    addView(
+                        TextView(this@MainActivity).apply {
+                            text = getString(R.string.version, BuildConfig.VERSION_NAME)
+                            gravity = Gravity.END
+                            setTextColor(getColor(android.R.color.white))
+                            setPadding(dpToPx(16), dpToPx(8), dpToPx(16), dpToPx(16))
+                        }
                     )
                 }
             )
