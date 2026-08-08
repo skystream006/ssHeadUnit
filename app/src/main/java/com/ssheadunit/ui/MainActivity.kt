@@ -304,7 +304,7 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
                                             }
                                         ) {
                                             setOrientation(orientation)
-                                            dismiss()
+                                            this@settingsDialog.dismiss()
                                             showSettings()
                                         }
                                     }
@@ -313,7 +313,7 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
                                         addSettingsButton(
                                             if (dpi == currentDpi) getString(R.string.option_selected, text) else text
                                         ) {
-                                            dismiss()
+                                            this@settingsDialog.dismiss()
                                             setVideoDpi(dpi)
                                             showSettings()
                                         }
@@ -326,7 +326,7 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
                                             getString(R.string.option_selected, customDpiText)
                                         }
                                     ) {
-                                        dismiss()
+                                        this@settingsDialog.dismiss()
                                         showCustomDpiDialog(currentDpi)
                                     }
 
@@ -341,12 +341,12 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
                                             }
                                         )
                                     ) {
-                                        dismiss()
+                                        this@settingsDialog.dismiss()
                                         HeadUnitLog.setEnabled(applicationContext, !debugLoggingEnabled)
                                         showSettings()
                                     }
                                     addSettingsButton(getString(R.string.view_debug_log)) {
-                                        dismiss()
+                                        this@settingsDialog.dismiss()
                                         showDebugLog()
                                     }
                                 }
