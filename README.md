@@ -36,11 +36,14 @@ A car head unit is the USB *host* and the phone is the *accessory*:
 
 ```bash
 ./gradlew assembleDebug      # or: gradle assembleDebug
+./gradlew assembleRelease    # creates an unsigned release APK
 ./gradlew test               # JVM unit tests for the protocol layer
 ```
 
 The build needs the Android SDK (compile SDK 35) and access to `dl.google.com` for the Android
 Gradle Plugin. The app itself has no runtime dependencies beyond the Android platform.
+The Android APK workflow builds the debug variant automatically. Run the Android Release APK
+workflow manually in GitHub Actions to build and upload an unsigned release APK artifact.
 
 ## Requirements
 
