@@ -10,15 +10,39 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
-    <TextView
-        android:id="@+id/status_text"
-        android:layout_width="wrap_content"
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="center"
-        android:padding="16dp"
-        android:text="@string/status_waiting"
-        android:textColor="@android:color/white"
-        android:textSize="20sp" />
+        android:gravity="center_horizontal"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/status_text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:padding="16dp"
+            android:text="@string/status_waiting"
+            android:textColor="@android:color/white"
+            android:textSize="20sp" />
+
+        <ScrollView
+            android:id="@+id/live_log_scroll"
+            android:layout_width="match_parent"
+            android:layout_height="@dimen/live_log_height"
+            android:layout_marginStart="16dp"
+            android:layout_marginEnd="16dp"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/live_log_text"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:fontFamily="monospace"
+                android:textColor="@android:color/darker_gray"
+                android:textSize="12sp" />
+        </ScrollView>
+    </LinearLayout>
 
     <Button
         android:id="@+id/settings_button"
