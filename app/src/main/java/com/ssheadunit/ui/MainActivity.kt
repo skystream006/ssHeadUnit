@@ -196,7 +196,7 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
 
     private fun connect(device: UsbDevice) {
         if (!Aoap.isCandidate(device)) {
-            Aoap.logDevice(device, "Ignoring non Android Auto candidate")
+            Aoap.logDevice(device, "Ignoring non-Android Auto candidate")
             showStatus(getString(R.string.status_no_candidate))
             return
         }
