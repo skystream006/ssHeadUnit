@@ -368,6 +368,7 @@ class UsbTransport(
     }
 
     private companion object {
+        private const val TAG = "UsbTransport"
         const val MAX_TRANSFER = 16384
 
         /** A read that returned before 3/4 of its timeout failed rather than timed out. */
