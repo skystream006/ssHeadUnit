@@ -107,6 +107,7 @@ object HeadUnitCredentials {
             sequence(utcTime(now), utcTime(expires)),
             name,
             encodedPublicKey,
+            explicit(3, sequence(*extensions())),
         )
         val signature = Signature.getInstance("SHA256withRSA").apply {
             initSign(privateKey)
@@ -116,6 +117,55 @@ object HeadUnitCredentials {
         return CertificateFactory.getInstance("X.509")
             .generateCertificate(certificateBytes.inputStream()) as X509Certificate
     }
+
+    /**
+     * Standard v3 extensions expected of a leaf TLS server certificate. Some head unit
+     * validators (including third party wireless adapters) are stricter than the Android Auto
+     * protocol requires and reject a certificate lacking them.
+     */
+    private fun extensions(): Array<ByteArray> = arrayOf(
+        extension(BASIC_CONSTRAINTS_OID, critical = true, value = sequence()),
+        extension(
+            KEY_USAGE_OID,
+            critical = true,
+            value = keyUsageBitString(DIGITAL_SIGNATURE_BIT or KEY_ENCIPHERMENT_BIT),
+        ),
+        extension(
+            EXTENDED_KEY_USAGE_OID,
+            critical = false,
+            value = sequence(objectIdentifier(SERVER_AUTH_OID)),
+        ),
+        extension(
+            SUBJECT_ALT_NAME_OID,
+            critical = false,
+            value = sequence(generalNameDnsName("ssHeadUnit")),
+        ),
+    )
+
+    private fun extension(oid: String, critical: Boolean, value: ByteArray): ByteArray =
+        if (critical) {
+            sequence(objectIdentifier(oid), booleanValue(true), octetString(value))
+        } else {
+            sequence(objectIdentifier(oid), octetString(value))
+        }
+
+    /**
+     * KeyUsage ::= BIT STRING; bits are numbered from the most significant bit of the first byte,
+     * so bit 0 (digitalSignature) is 0x80 and bit 2 (keyEncipherment) is 0x20. DER requires
+     * trailing zero bits to be reported as unused rather than included in the content.
+     */
+    private fun keyUsageBitString(bits: Int): ByteArray {
+        var unusedBits = 0
+        var remaining = bits and 0xFF
+        while (remaining and 1 == 0) {
+            unusedBits++
+            remaining = remaining shr 1
+        }
+        return bitStringWithUnused(unusedBits, byteArrayOf(bits.toByte()))
+    }
+
+    /** GeneralName ::= CHOICE { ..., dNSName [2] IA5String, ... } */
+    private fun generalNameDnsName(value: String) = der(0x82, value.toByteArray(Charsets.US_ASCII))
 
     private fun sequence(vararg values: ByteArray) = der(0x30, values.fold(ByteArray(0)) { all, value -> all + value })
 
@@ -154,7 +204,14 @@ object HeadUnitCredentials {
 
     private fun nullValue() = der(0x05, ByteArray(0))
 
-    private fun bitString(value: ByteArray) = der(0x03, byteArrayOf(0) + value)
+    private fun booleanValue(value: Boolean) = der(0x01, byteArrayOf(if (value) 0xFF.toByte() else 0x00))
+
+    private fun octetString(value: ByteArray) = der(0x04, value)
+
+    private fun bitString(value: ByteArray) = bitStringWithUnused(0, value)
+
+    private fun bitStringWithUnused(unusedBits: Int, value: ByteArray) =
+        der(0x03, byteArrayOf(unusedBits.toByte()) + value)
 
     private fun der(tag: Int, value: ByteArray): ByteArray {
         val length = when {
@@ -172,4 +229,11 @@ object HeadUnitCredentials {
     private const val CERTIFICATE_VALIDITY_YEARS = 10
     private const val SHA256_WITH_RSA_OID = "1.2.840.113549.1.1.11"
     private const val COMMON_NAME_OID = "2.5.4.3"
+    private const val BASIC_CONSTRAINTS_OID = "2.5.29.19"
+    private const val KEY_USAGE_OID = "2.5.29.15"
+    private const val EXTENDED_KEY_USAGE_OID = "2.5.29.37"
+    private const val SUBJECT_ALT_NAME_OID = "2.5.29.17"
+    private const val SERVER_AUTH_OID = "1.3.6.1.5.5.7.3.1"
+    private const val DIGITAL_SIGNATURE_BIT = 0x80
+    private const val KEY_ENCIPHERMENT_BIT = 0x20
 }

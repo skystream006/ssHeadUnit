@@ -81,7 +81,11 @@ provide a custom identity through the assets folder:
   private key.
 * `app/src/main/assets/headunit.pwd` – the keystore password (optional; empty when absent).
 
-The generated identity is retained until the app's data is cleared.
+The generated identity is retained until the app's data is cleared. The generated certificate is
+a v3 certificate carrying the extensions expected of a leaf TLS server certificate — critical
+`basicConstraints` (`CA:FALSE`) and `keyUsage` (`digitalSignature`, `keyEncipherment`), plus
+non-critical `extendedKeyUsage` (`serverAuth`) and `subjectAltName` — so that validators stricter
+than the Android Auto protocol itself are less likely to reject it.
 
 ## Usage
 
