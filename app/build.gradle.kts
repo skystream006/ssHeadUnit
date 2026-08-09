@@ -6,6 +6,7 @@ plugins {
 android {
     namespace = "com.ssheadunit"
     compileSdk = 35
+    ndkVersion = "27.0.12077973"
 
     defaultConfig {
         applicationId = "com.ssheadunit"
@@ -13,6 +14,19 @@ android {
         targetSdk = 35
         versionCode = 19
         versionName = "0.01.19"
+
+        ndk {
+            abiFilters += listOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64")
+        }
+    }
+
+    // libusb drives the USB bulk endpoints; the sources are fetched by CMake when the native
+    // build is configured, so an Android NDK and network access are needed for a full build.
+    externalNativeBuild {
+        cmake {
+            path = file("src/main/cpp/CMakeLists.txt")
+            version = "3.22.1"
+        }
     }
 
     signingConfigs {

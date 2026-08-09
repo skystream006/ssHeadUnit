@@ -24,7 +24,8 @@ A car head unit is the USB *host* and the phone is the *accessory*:
 
 | Path | Purpose |
 | --- | --- |
-| `app/src/main/java/com/ssheadunit/transport` | USB host transport and AOAP accessory-mode switch |
+| `app/src/main/java/com/ssheadunit/transport` | USB host transport (libusb backed) and AOAP accessory-mode switch |
+| `app/src/main/cpp`                          | CMake build of libusb and the JNI bridge (`libssusb.so`) |
 | `app/src/main/java/com/ssheadunit/protocol` | Frame codec, minimal protobuf codec, message builders, TLS layer |
 | `app/src/main/java/com/ssheadunit/session`  | Session state machine, controller, credentials |
 | `app/src/main/java/com/ssheadunit/av`       | H.264 decoding (`MediaCodec`) and PCM playback (`AudioTrack`) |
@@ -40,10 +41,29 @@ A car head unit is the USB *host* and the phone is the *accessory*:
 ./gradlew test               # JVM unit tests for the protocol layer
 ```
 
-The build needs the Android SDK (compile SDK 35) and access to `dl.google.com` for the Android
-Gradle Plugin. The app itself has no runtime dependencies beyond the Android platform.
+The build needs the Android SDK (compile SDK 35), the NDK and CMake for the native USB layer, and
+access to `dl.google.com` for the Android Gradle Plugin. CMake downloads the pinned libusb release
+tarball (hash checked) the first time the native build is configured, so the first build also needs
+access to `github.com`; point `-DLIBUSB_URL=file:///path/to/libusb-1.0.27.tar.bz2` at a local copy
+to build without it. Apart from libusb the app has no runtime dependencies beyond the Android platform.
 The Android APK workflow builds the debug variant automatically. Run the Android Release APK
 workflow manually in GitHub Actions to build and upload an unsigned release APK artifact.
+
+## USB transport
+
+The bulk endpoints are driven by **libusb** instead of `UsbDeviceConnection.bulkTransfer`. The
+Android framework still enumerates the device and asks the user for the USB permission; the file
+descriptor of the open connection is then handed to libusb (`libusb_wrap_sys_device`), which claims
+the accessory interface and performs the transfers.
+
+This is what fixes connections that used to stall: the framework reports every problem as a single
+negative number, so an idle link, a stalled endpoint and an unplugged device are indistinguishable
+and a session either dies early or hangs. libusb returns the real usbfs status, so the head unit
+keeps waiting while the phone is idle, clears a halted endpoint and ends the session immediately
+when the device is gone.
+
+If the native library is missing (for example in a build made without the NDK), the app falls back
+to the previous framework transport and says so in the debug log.
 
 ## Requirements
 
@@ -102,6 +122,7 @@ in the app's private debug log. Open **Settings → View debug log** to read, cl
 ## Notes
 
 * Debug logging is off by default; warnings and errors are always logged.
+* libusb is licensed under the LGPL 2.1; it is not vendored, its sources are fetched by CMake.
 * Video is projected at 1280x720 by default; the resolution, DPI and head unit identity can be
   changed in `HeadUnitConfig` / `HeadUnitController`.
 * The wireless (Wi-Fi) projection transport is not implemented; the app uses USB only.
