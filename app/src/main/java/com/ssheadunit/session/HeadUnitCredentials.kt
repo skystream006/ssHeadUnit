@@ -123,7 +123,12 @@ object HeadUnitCredentials {
 
     private fun createCertificate(encodedPublicKey: ByteArray, privateKey: java.security.PrivateKey): X509Certificate {
         val algorithm = sequence(objectIdentifier(SHA256_WITH_RSA_OID), nullValue())
-        val name = sequence(set(sequence(objectIdentifier(COMMON_NAME_OID), utf8String("ssHeadUnit"))))
+        val name = distinguishedName(
+            country = CERT_SUBJECT_COUNTRY,
+            organization = CERT_SUBJECT_ORGANIZATION,
+            organizationalUnit = CERT_SUBJECT_ORGANIZATIONAL_UNIT,
+            commonName = CERT_SUBJECT_COMMON_NAME,
+        )
         val now = Calendar.getInstance(TimeZone.getTimeZone("UTC"))
         val expires = (now.clone() as Calendar).apply { add(Calendar.YEAR, CERTIFICATE_VALIDITY_YEARS) }
         val tbsCertificate = sequence(
@@ -165,8 +170,20 @@ object HeadUnitCredentials {
         extension(
             SUBJECT_ALT_NAME_OID,
             critical = false,
-            value = sequence(generalNameDnsName("ssHeadUnit")),
+            value = sequence(generalNameDnsName(CERT_SUBJECT_COMMON_NAME)),
         ),
+    )
+
+    private fun distinguishedName(
+        country: String,
+        organization: String,
+        organizationalUnit: String,
+        commonName: String,
+    ): ByteArray = sequence(
+        set(sequence(objectIdentifier(COUNTRY_NAME_OID), printableString(country))),
+        set(sequence(objectIdentifier(ORGANIZATION_NAME_OID), utf8String(organization))),
+        set(sequence(objectIdentifier(ORGANIZATIONAL_UNIT_NAME_OID), utf8String(organizationalUnit))),
+        set(sequence(objectIdentifier(COMMON_NAME_OID), utf8String(commonName))),
     )
 
     private fun extension(oid: String, critical: Boolean, value: ByteArray): ByteArray =
@@ -223,6 +240,8 @@ object HeadUnitCredentials {
 
     private fun utf8String(value: String) = der(0x0C, value.toByteArray(Charsets.UTF_8))
 
+    private fun printableString(value: String) = der(0x13, value.toByteArray(Charsets.US_ASCII))
+
     private fun utcTime(value: Calendar): ByteArray {
         val formatter = SimpleDateFormat("yyMMddHHmmss'Z'", Locale.US).apply {
             timeZone = TimeZone.getTimeZone("UTC")
@@ -257,6 +276,9 @@ object HeadUnitCredentials {
     private const val KEY_SIZE_BITS = 2048
     private const val CERTIFICATE_VALIDITY_YEARS = 10
     private const val SHA256_WITH_RSA_OID = "1.2.840.113549.1.1.11"
+    private const val COUNTRY_NAME_OID = "2.5.4.6"
+    private const val ORGANIZATION_NAME_OID = "2.5.4.10"
+    private const val ORGANIZATIONAL_UNIT_NAME_OID = "2.5.4.11"
     private const val COMMON_NAME_OID = "2.5.4.3"
     private const val BASIC_CONSTRAINTS_OID = "2.5.29.19"
     private const val KEY_USAGE_OID = "2.5.29.15"
@@ -265,4 +287,8 @@ object HeadUnitCredentials {
     private const val SERVER_AUTH_OID = "1.3.6.1.5.5.7.3.1"
     private const val DIGITAL_SIGNATURE_BIT = 0x80
     private const val KEY_ENCIPHERMENT_BIT = 0x20
+    private const val CERT_SUBJECT_COUNTRY = "US"
+    private const val CERT_SUBJECT_ORGANIZATION = "Stellantis N.V."
+    private const val CERT_SUBJECT_ORGANIZATIONAL_UNIT = "FCA US LLC Uconnect"
+    private const val CERT_SUBJECT_COMMON_NAME = "com.google.android.automotive.fca.pacifica.prod"
 }

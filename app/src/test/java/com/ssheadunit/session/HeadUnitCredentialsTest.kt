@@ -2,6 +2,7 @@ package com.ssheadunit.session
 
 import java.security.KeyPairGenerator
 import java.security.cert.X509Certificate
+import javax.security.auth.x500.X500Principal
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -56,8 +57,17 @@ class HeadUnitCredentialsTest {
     fun `subject alternative name declares a DNS entry`() {
         val certificate = generateCertificate()
         val dnsNames = certificate.subjectAlternativeNames.map { it[1] as String }
-        assertTrue(dnsNames.contains("ssHeadUnit"))
+        assertTrue(dnsNames.contains(SUBJECT_COMMON_NAME))
         assertTrue(certificate.nonCriticalExtensionOIDs.contains(SUBJECT_ALT_NAME_OID))
+    }
+
+    @Test
+    fun `subject distinguished name matches pacifica production identity`() {
+        val subject = generateCertificate().subjectX500Principal.getName(X500Principal.RFC2253)
+        assertEquals(
+            "CN=$SUBJECT_COMMON_NAME,OU=FCA US LLC Uconnect,O=Stellantis N.V.,C=US",
+            subject,
+        )
     }
 
     companion object {
@@ -66,5 +76,6 @@ class HeadUnitCredentialsTest {
         private const val EXTENDED_KEY_USAGE_OID = "2.5.29.37"
         private const val SUBJECT_ALT_NAME_OID = "2.5.29.17"
         private const val SERVER_AUTH_OID = "1.3.6.1.5.5.7.3.1"
+        private const val SUBJECT_COMMON_NAME = "com.google.android.automotive.fca.pacifica.prod"
     }
 }
