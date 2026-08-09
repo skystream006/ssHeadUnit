@@ -155,8 +155,9 @@ object HeadUnitCredentials {
      * trailing zero bits to be reported as unused rather than included in the content.
      */
     private fun keyUsageBitString(bits: Int): ByteArray {
-        var unusedBits = 0
         var remaining = bits and 0xFF
+        if (remaining == 0) return bitStringWithUnused(0, byteArrayOf(0))
+        var unusedBits = 0
         while (remaining and 1 == 0) {
             unusedBits++
             remaining = remaining shr 1
