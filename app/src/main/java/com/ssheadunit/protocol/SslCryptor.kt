@@ -158,7 +158,7 @@ class SslCryptor(
         chain.mapIndexed { index, certificate ->
             "certificate #$index: ${describeEncodedCertificate(certificate.encoded)}"
         }.joinToString("; ")
-    }.getOrElse { "an undescribable certificate chain (${it.message ?: it.javaClass.simpleName})" }
+    }.getOrElse { "a certificate chain that could not be described (${it.message ?: it.javaClass.simpleName})" }
 
     private fun describePeerCertificates(): String = runCatching {
         val chain = engine.session.peerCertificates
@@ -169,7 +169,12 @@ class SslCryptor(
                 "certificate #$index: ${describeEncodedCertificate(certificate.encoded)}"
             }.joinToString("; ")
         }
-    }.getOrElse { "no certificate (client authentication is not requested)" }
+    }.getOrElse {
+        // peerCertificates throws when the peer was never authenticated, which is the normal case
+        // here because client authentication is not requested. Report the actual reason so a
+        // different cause is not misattributed.
+        "no certificate (${it.message ?: it.javaClass.simpleName})"
+    }
 
     private fun append(data: ByteArray) {
         // inbound is kept in "read" mode; grow it when the leftover plus new data does not fit.

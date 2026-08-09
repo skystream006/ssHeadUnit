@@ -58,9 +58,10 @@ interface HeadUnitListener {
 
     /**
      * Whether verbose diagnostics are wanted. Decoding the TLS handshake is skipped when false, so
-     * a session running without debug logging does no extra work.
+     * a listener that does not collect the log does no extra work, matching the no-op default of
+     * [onLog].
      */
-    fun isDiagnosticLoggingEnabled(): Boolean = true
+    fun isDiagnosticLoggingEnabled(): Boolean = false
 
     /** Unexpected but non fatal condition; always reaches logcat. */
     fun onWarning(message: String) {}
