@@ -95,22 +95,22 @@ object HeadUnitLog {
     }
 
     private fun write(tag: String, level: String, message: String, error: Throwable? = null) {
-        val line = synchronized(lock) {
+        val callback = synchronized(lock) {
             val file = logFile ?: return
-            var formatted = ""
-            runCatching {
+            val formatted = runCatching {
                 if (file.length() > MAX_LOG_SIZE_BYTES) {
                     file.writeText("--- Previous debug log rotated after reaching the size limit ---\n")
                 }
                 val throwable = error?.let {
                     StringWriter().also { writer -> it.printStackTrace(PrintWriter(writer)) }.toString()
                 }.orEmpty()
-                formatted = "${timestamp().format(Date())} $level/$tag: $message\n$throwable"
-                file.appendText(formatted)
-            }
-            formatted
+                val line = "${timestamp().format(Date())} $level/$tag: $message\n$throwable"
+                file.appendText(line)
+                line
+            }.getOrDefault("")
+            (listener to formatted).takeIf { enabled && formatted.isNotEmpty() }
         }
-        if (enabled && line.isNotEmpty()) listener?.invoke(line)
+        callback?.let { (notify, line) -> notify?.invoke(line) }
     }
 
     private const val TAG = "HeadUnitLog"

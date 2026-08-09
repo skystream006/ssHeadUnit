@@ -133,7 +133,7 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
             registerReceiver(usbReceiver, filter)
         }
         showStatus(HeadUnitController.status.takeIf { HeadUnitController.isConnected } ?: getString(R.string.status_waiting))
-        if (!HeadUnitController.isConnected) liveLogView.text = ""
+        liveLogView.text = ""
         updateLiveLogVisibility(HeadUnitController.isConnected)
         scanForPhone()
     }
