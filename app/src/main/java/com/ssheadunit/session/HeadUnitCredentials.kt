@@ -93,17 +93,41 @@ object HeadUnitCredentials {
             val keyStore = KeyStore.getInstance("PKCS12").apply { load(null, EMPTY_PASSWORD) }
             keyStore.setKeyEntry(KEY_ALIAS, keyPair.private, EMPTY_PASSWORD, arrayOf(certificate))
             FileOutputStream(temporaryFile).use { keyStore.store(it, EMPTY_PASSWORD) }
-            if (overwrite && generatedFile.exists() && !generatedFile.delete()) {
-                throw IOException("Unable to overwrite $KEYSTORE_ASSET")
-            }
-            if (!temporaryFile.renameTo(generatedFile)) {
-                throw IOException("Unable to save $KEYSTORE_ASSET")
-            }
+            installGeneratedFile(temporaryFile, generatedFile, overwrite)
             return generatedFile
         } catch (e: Exception) {
             temporaryFile.delete()
             throw MissingCredentialsException("Unable to create $KEYSTORE_ASSET", e)
         }
+    }
+
+    private fun installGeneratedFile(temporaryFile: File, generatedFile: File, overwrite: Boolean) {
+        if (!overwrite) {
+            if (!temporaryFile.renameTo(generatedFile)) {
+                throw IOException("Unable to save $KEYSTORE_ASSET")
+            }
+            return
+        }
+
+        val backupFile = File(generatedFile.parentFile, "$KEYSTORE_ASSET.bak")
+        if (backupFile.exists() && !backupFile.delete()) {
+            throw IOException("Unable to prepare $KEYSTORE_ASSET replacement")
+        }
+
+        val hasBackup = generatedFile.exists()
+        if (hasBackup && !generatedFile.renameTo(backupFile)) {
+            throw IOException("Unable to back up existing $KEYSTORE_ASSET")
+        }
+
+        if (temporaryFile.renameTo(generatedFile)) {
+            backupFile.delete()
+            return
+        }
+
+        if (hasBackup && backupFile.exists() && !backupFile.renameTo(generatedFile)) {
+            throw IOException("Unable to save $KEYSTORE_ASSET; previous credentials remain at ${backupFile.name}")
+        }
+        throw IOException("Unable to save $KEYSTORE_ASSET")
     }
 
     /**
@@ -210,6 +234,7 @@ object HeadUnitCredentials {
     private fun notBefore(profile: CertificateProfile): Calendar =
         when (profile) {
             CertificateProfile.SS_HEAD_UNIT -> Calendar.getInstance(TimeZone.getTimeZone("UTC"))
+            // Matches the cloned Pacifica certificate validity exactly, including its fixed expiry.
             CertificateProfile.CHRYSLER_PACIFICA -> utcCalendar(2024, Calendar.MARCH, 15, 0, 0, 0)
         }
 
