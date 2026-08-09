@@ -107,6 +107,14 @@ Java_com_ssheadunit_transport_LibUsb_nativeOpen(JNIEnv *env, jclass clazz, jint 
         destroy(dev);
         return result;
     }
+    /*
+     * Devices in AOAP mode (Google vendor id 0x18d1, product ids 0x2d00-0x2d05) are recognised by
+     * the Linux kernel's built-in "usb_accessory" driver, which auto-binds to the interface as
+     * soon as the device re-enumerates. libusb_claim_interface then fails because the kernel
+     * driver already owns it, so it has to be detached first. This is a no-op (and harmless) on
+     * backends that don't support it or when no kernel driver is attached.
+     */
+    (void) libusb_set_auto_detach_kernel_driver(dev->handle, 1);
     result = libusb_claim_interface(dev->handle, interface_number);
     if (result != LIBUSB_SUCCESS) {
         destroy(dev);
