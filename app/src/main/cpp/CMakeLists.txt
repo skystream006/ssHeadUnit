@@ -17,7 +17,6 @@ FetchContent_Declare(
     libusb
     URL "${LIBUSB_URL}"
     URL_HASH "SHA256=${LIBUSB_SHA256}"
-    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
 )
 FetchContent_MakeAvailable(libusb)
 
