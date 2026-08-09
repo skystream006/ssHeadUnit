@@ -16,7 +16,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <android/log.h>
 #include <libusb.h>
+
+#define LOG_TAG "ssusb"
 
 /**
  * One opened device. The handle can be closed while a blocking transfer is still running, so the
@@ -130,6 +133,10 @@ Java_com_ssheadunit_transport_LibUsb_nativeOpen(JNIEnv *env, jclass clazz, jint 
             int detach_result = libusb_detach_kernel_driver(dev->handle, interface_number);
             if (detach_result == LIBUSB_SUCCESS || detach_result == LIBUSB_ERROR_NOT_FOUND) {
                 result = libusb_claim_interface(dev->handle, interface_number);
+            } else {
+                __android_log_print(ANDROID_LOG_WARN, LOG_TAG,
+                    "libusb_detach_kernel_driver(%d) failed: %s",
+                    interface_number, libusb_error_name(detach_result));
             }
         }
     }

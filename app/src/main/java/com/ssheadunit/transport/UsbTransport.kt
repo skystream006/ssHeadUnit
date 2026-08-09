@@ -226,7 +226,7 @@ object Aoap {
                 endpoint.address,
                 null,
                 0,
-                0
+                CONTROL_TIMEOUT_MS
             )
         }.getOrDefault(-1)
         if (result >= 0) {
