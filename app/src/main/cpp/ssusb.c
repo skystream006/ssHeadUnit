@@ -16,7 +16,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <android/log.h>
 #include <libusb.h>
+
+#define LOG_TAG "ssusb"
 
 /**
  * One opened device. The handle can be closed while a blocking transfer is still running, so the
@@ -111,11 +114,36 @@ Java_com_ssheadunit_transport_LibUsb_nativeOpen(JNIEnv *env, jclass clazz, jint 
      * Devices in AOAP mode (Google vendor id 0x18d1, product ids 0x2d00-0x2d05) are recognised by
      * the Linux kernel's built-in "usb_accessory" driver, which auto-binds to the interface as
      * soon as the device re-enumerates. libusb_claim_interface then fails because the kernel
-     * driver already owns it, so it has to be detached first. This is a no-op (and harmless) on
-     * backends that don't support it or when no kernel driver is attached.
+     * driver already owns it, so it has to be detached first. Setting the auto-detach option lets
+     * libusb try the combined disconnect-and-claim ioctl (or its own detach-then-claim fallback)
+     * itself; this is a no-op (and harmless) on backends that don't support it or when no kernel
+     * driver is attached.
      */
     (void) libusb_set_auto_detach_kernel_driver(dev->handle, 1);
     result = libusb_claim_interface(dev->handle, interface_number);
+    if (result != LIBUSB_SUCCESS) {
+        /*
+         * The auto-detach option did not manage to free the interface (some usbfs
+         * implementations only support the legacy detach ioctl, or ignore the auto-detach flag
+         * entirely). Explicitly check for and detach a kernel driver still holding the interface,
+         * then retry the claim once before giving up.
+         */
+        int active = libusb_kernel_driver_active(dev->handle, interface_number);
+        if (active == 1) {
+            int detach_result = libusb_detach_kernel_driver(dev->handle, interface_number);
+            if (detach_result == LIBUSB_SUCCESS || detach_result == LIBUSB_ERROR_NOT_FOUND) {
+                result = libusb_claim_interface(dev->handle, interface_number);
+            } else {
+                __android_log_print(ANDROID_LOG_WARN, LOG_TAG,
+                    "libusb_detach_kernel_driver(%d) failed: %s",
+                    interface_number, libusb_error_name(detach_result));
+            }
+        } else if (active < 0) {
+            __android_log_print(ANDROID_LOG_WARN, LOG_TAG,
+                "libusb_kernel_driver_active(%d) failed: %s",
+                interface_number, libusb_error_name(active));
+        }
+    }
     if (result != LIBUSB_SUCCESS) {
         destroy(dev);
         return result;
