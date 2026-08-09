@@ -1,7 +1,11 @@
 package com.ssheadunit.session
 
+import java.math.BigInteger
 import java.security.KeyPairGenerator
 import java.security.cert.X509Certificate
+import java.text.SimpleDateFormat
+import java.util.Locale
+import java.util.TimeZone
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -13,15 +17,18 @@ import org.junit.Test
  */
 class HeadUnitCredentialsTest {
 
-    private fun generateCertificate(): X509Certificate {
+    private fun generateCertificate(
+        profile: HeadUnitCredentials.CertificateProfile = HeadUnitCredentials.CertificateProfile.SS_HEAD_UNIT,
+    ): X509Certificate {
         val keyPair = KeyPairGenerator.getInstance("RSA").apply { initialize(2048) }.generateKeyPair()
         val method = HeadUnitCredentials::class.java.getDeclaredMethod(
             "createCertificate",
             ByteArray::class.java,
             java.security.PrivateKey::class.java,
+            HeadUnitCredentials.CertificateProfile::class.java,
         )
         method.isAccessible = true
-        return method.invoke(HeadUnitCredentials, keyPair.public.encoded, keyPair.private) as X509Certificate
+        return method.invoke(HeadUnitCredentials, keyPair.public.encoded, keyPair.private, profile) as X509Certificate
     }
 
     @Test
@@ -59,6 +66,36 @@ class HeadUnitCredentialsTest {
         assertTrue(dnsNames.contains("ssHeadUnit"))
         assertTrue(certificate.nonCriticalExtensionOIDs.contains(SUBJECT_ALT_NAME_OID))
     }
+
+    @Test
+    fun `chrysler pacifica certificate matches requested identity`() {
+        val certificate = generateCertificate(HeadUnitCredentials.CertificateProfile.CHRYSLER_PACIFICA)
+
+        assertEquals(BigInteger("7bcd3456ef1290ab", 16), certificate.serialNumber)
+        assertEquals(
+            "CN=Google Automotive Services Production CA,OU=Android,O=Google LLC,C=US",
+            certificate.issuerX500Principal.name,
+        )
+        assertEquals(
+            "CN=com.google.android.automotive.fca.pacifica.prod,OU=FCA US LLC Uconnect,O=Stellantis N.V.,C=US",
+            certificate.subjectX500Principal.name,
+        )
+        assertEquals(utcDate("2024-03-15 00:00:00"), certificate.notBefore)
+        assertEquals(utcDate("2034-03-14 23:59:59"), certificate.notAfter)
+        assertEquals("SHA256withRSA", certificate.sigAlgName)
+    }
+
+    @Test
+    fun `chrysler pacifica certificate uses pacifica subject alternative name`() {
+        val certificate = generateCertificate(HeadUnitCredentials.CertificateProfile.CHRYSLER_PACIFICA)
+
+        val dnsNames = certificate.subjectAlternativeNames.map { it[1] as String }
+        assertTrue(dnsNames.contains("com.google.android.automotive.fca.pacifica.prod"))
+    }
+
+    private fun utcDate(value: String) = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).apply {
+        timeZone = TimeZone.getTimeZone("UTC")
+    }.parse(value)
 
     companion object {
         private const val BASIC_CONSTRAINTS_OID = "2.5.29.19"

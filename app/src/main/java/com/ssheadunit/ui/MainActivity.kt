@@ -32,6 +32,7 @@ import android.widget.RadioButton
 import android.widget.RadioGroup
 import android.widget.ScrollView
 import android.widget.TextView
+import android.widget.Toast
 import com.ssheadunit.BuildConfig
 import com.ssheadunit.R
 import com.ssheadunit.session.HeadUnitController
@@ -354,6 +355,16 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
                                         }
                                     )
 
+                                    addSettingsSection(getString(R.string.settings_credentials))
+                                    addSettingsButton(getString(R.string.generate_ssheadunit_certificate)) {
+                                        this@settingsDialog.dismiss()
+                                        replaceCertificate(HeadUnitCredentials.CertificateProfile.SS_HEAD_UNIT)
+                                    }
+                                    addSettingsButton(getString(R.string.generate_chrysler_pacifica_certificate)) {
+                                        this@settingsDialog.dismiss()
+                                        replaceCertificate(HeadUnitCredentials.CertificateProfile.CHRYSLER_PACIFICA)
+                                    }
+
                                     addSettingsSection(getString(R.string.settings_diagnostics))
                                     val debugLoggingEnabled = HeadUnitLog.enabled
                                     addSettingsButton(
@@ -579,6 +590,28 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
             }
             .setNegativeButton(android.R.string.cancel) { _, _ -> showSettings() }
             .show()
+    }
+
+    private fun replaceCertificate(profile: HeadUnitCredentials.CertificateProfile) {
+        Thread({
+            val result = runCatching { HeadUnitCredentials.replaceCredentials(applicationContext, profile) }
+            runOnUiThread {
+                if (isFinishing || isDestroyed) return@runOnUiThread
+                Toast.makeText(
+                    this,
+                    getString(
+                        if (result.isSuccess) {
+                            R.string.certificate_generated
+                        } else {
+                            R.string.certificate_generation_failed
+                        }
+                    ),
+                    Toast.LENGTH_LONG
+                ).show()
+                result.exceptionOrNull()?.let { HeadUnitLog.e(TAG, "Unable to replace head unit credentials", it) }
+                showSettings()
+            }
+        }, "certificate-generator").start()
     }
 
     private fun showDebugLog() {
