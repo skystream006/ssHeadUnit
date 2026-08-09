@@ -1,5 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!--
+        Match phones before they switch into Android Open Accessory mode.
+        Pre-AOAP phones use manufacturer-specific ids, and Android USB filters cannot express the
+        descriptor-based candidate checks in AccessoryDetection. MainActivity ignores non-candidates
+        before requesting USB permission.
+    -->
+    <usb-device />
+
     <!-- Phones and wireless adapters already switched into Android Open Accessory mode. -->
     <usb-device vendor-id="6353" product-id="11520" />
     <usb-device vendor-id="6353" product-id="11521" />

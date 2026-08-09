@@ -86,6 +86,9 @@ object Aoap {
     /** True when a projection session can be attempted without switching the device first. */
     fun isSessionReady(device: UsbDevice): Boolean = AccessoryDetection.isSessionReady(describe(device))
 
+    /** True when [device] is worth attempting as an Android Auto phone or adapter. */
+    fun isCandidate(device: UsbDevice): Boolean = AccessoryDetection.candidateScore(describe(device)) > 0
+
     /** True when [device] exposes an interface that could carry a session. */
     fun hasUsableInterface(device: UsbDevice): Boolean =
         AccessoryDetection.sessionInterface(describe(device)) != null
