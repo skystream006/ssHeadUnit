@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -52,9 +52,14 @@ jobs:
       - name: Rename APK
         run: cp app/build/outputs/apk/release/app-release-unsigned.apk "${{ steps.apk_name.outputs.apk_name }}.apk"
 
-      - name: Upload APK
-        uses: actions/upload-artifact@v7
-        with:
-          name: ${{ steps.apk_name.outputs.apk_name }}
-          path: ${{ steps.apk_name.outputs.apk_name }}.apk
-          if-no-files-found: error
+      - name: Publish APK release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="${{ steps.apk_name.outputs.apk_name }}"
+          gh release delete "$tag" --repo "${{ github.repository }}" --yes --cleanup-tag 2>/dev/null || true
+          gh release create "$tag" "${{ steps.apk_name.outputs.apk_name }}.apk" \
+            --repo "${{ github.repository }}" \
+            --target "${{ github.sha }}" \
+            --title "$tag" \
+            --notes "Unsigned release APK for ${{ github.sha }}"
