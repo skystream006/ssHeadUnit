@@ -167,8 +167,15 @@ object Aoap {
         }
     }
 
-    /** Opens the bulk endpoints of a phone or adapter that is already in accessory mode. */
-    fun openTransport(manager: UsbManager, device: UsbDevice): UsbTransport {
+    /**
+     * Opens the bulk endpoints of a phone or adapter that is already in accessory mode.
+     *
+     * libusb drives the endpoints when the native library is available: it claims the interface
+     * on the descriptor of the framework connection and reports the real usbfs status of every
+     * transfer, which is what makes a stalled or idle link recoverable. The framework transport
+     * remains as a fallback for builds or devices where libusb cannot claim the interface.
+     */
+    fun openTransport(manager: UsbManager, device: UsbDevice): Transport {
         logDevice(device, "Opening")
         val descriptor = describe(device)
         val selected = AccessoryDetection.sessionInterface(descriptor)
@@ -178,8 +185,14 @@ object Aoap {
         val connection = manager.openDevice(device)
             ?: throw TransportException("Unable to open USB device ${device.deviceName}")
         val iface: UsbInterface = device.getInterface(selected.index)
-        val input = endpointAt(iface, selected.bulkIn.first().address)
-        val output = endpointAt(iface, selected.bulkOut.first().address)
+        val inAddress = selected.bulkIn.first().address
+        val outAddress = selected.bulkOut.first().address
+
+        LibUsbTransport.open(connection, iface.id, inAddress, outAddress)?.let { return it }
+
+        HeadUnitLog.w(TAG, "Falling back to the framework USB transport")
+        val input = endpointAt(iface, inAddress)
+        val output = endpointAt(iface, outAddress)
         if (input == null || output == null || !connection.claimInterface(iface, true)) {
             connection.close()
             throw TransportException("Unable to claim interface ${selected.index} on ${device.deviceName}")
