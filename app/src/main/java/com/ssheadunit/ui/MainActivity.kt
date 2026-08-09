@@ -49,6 +49,8 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
     private lateinit var statusView: TextView
     private lateinit var settingsButton: Button
     private lateinit var usbManager: UsbManager
+    private lateinit var liveLogScroll: ScrollView
+    private lateinit var liveLogView: TextView
 
     @Volatile
     private var switching = false
@@ -92,6 +94,8 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
         surfaceView = findViewById(R.id.projection_surface)
         statusView = findViewById(R.id.status_text)
         settingsButton = findViewById(R.id.settings_button)
+        liveLogScroll = findViewById(R.id.live_log_scroll)
+        liveLogView = findViewById(R.id.live_log_text)
         surfaceView.holder.addCallback(this)
         usbManager = getSystemService(Context.USB_SERVICE) as UsbManager
         applyOrientation()
@@ -102,11 +106,16 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
         runCatching { HeadUnitCredentials.ensureCredentials(applicationContext) }
             .onFailure { HeadUnitLog.e(TAG, "Unable to create head unit credentials", it) }
 
+        HeadUnitLog.listener = { line ->
+            runOnUiThread { appendLiveLog(line) }
+        }
+
         HeadUnitController.statusListener = { text, connected ->
             runOnUiThread {
                 statusView.text = text
                 statusView.visibility = if (connected) View.GONE else View.VISIBLE
                 settingsButton.visibility = if (connected) View.GONE else View.VISIBLE
+                updateLiveLogVisibility(connected)
             }
         }
     }
@@ -124,6 +133,8 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
             registerReceiver(usbReceiver, filter)
         }
         showStatus(HeadUnitController.status.takeIf { HeadUnitController.isConnected } ?: getString(R.string.status_waiting))
+        if (!HeadUnitController.isConnected) liveLogView.text = ""
+        updateLiveLogVisibility(HeadUnitController.isConnected)
         scanForPhone()
     }
 
@@ -134,6 +145,7 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
 
     override fun onDestroy() {
         HeadUnitController.statusListener = null
+        HeadUnitLog.listener = null
         super.onDestroy()
     }
 
@@ -277,6 +289,19 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
         statusView.text = text
         statusView.visibility = View.VISIBLE
         settingsButton.visibility = if (HeadUnitController.isConnected) View.GONE else View.VISIBLE
+        updateLiveLogVisibility(HeadUnitController.isConnected)
+    }
+
+    /** Shows the live debug log below the status text until the session is connected. */
+    private fun updateLiveLogVisibility(connected: Boolean) {
+        liveLogScroll.visibility = if (HeadUnitLog.enabled && !connected) View.VISIBLE else View.GONE
+    }
+
+    private fun appendLiveLog(line: String) {
+        if (!HeadUnitLog.enabled || HeadUnitController.isConnected) return
+        liveLogView.append(line)
+        liveLogScroll.visibility = View.VISIBLE
+        liveLogScroll.post { liveLogScroll.fullScroll(View.FOCUS_DOWN) }
     }
 
     /** Settings are shown full screen so categories are visible without nesting. */
@@ -342,6 +367,7 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
                                     ) {
                                         this@settingsDialog.dismiss()
                                         HeadUnitLog.setEnabled(applicationContext, !debugLoggingEnabled)
+                                        updateLiveLogVisibility(HeadUnitController.isConnected)
                                         showSettings()
                                     }
                                     addSettingsButton(getString(R.string.view_debug_log)) {

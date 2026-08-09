@@ -28,6 +28,13 @@ object HeadUnitLog {
     @Volatile
     private var logFile: File? = null
 
+    /**
+     * Notified with each formatted line as it is recorded, so the UI can mirror the log live
+     * while debug logging is on. Only invoked while [enabled] is true.
+     */
+    @Volatile
+    var listener: ((String) -> Unit)? = null
+
     /** Loads the persisted setting; call once when the process starts. */
     fun load(context: Context) {
         val appContext = context.applicationContext
@@ -88,8 +95,9 @@ object HeadUnitLog {
     }
 
     private fun write(tag: String, level: String, message: String, error: Throwable? = null) {
-        synchronized(lock) {
+        val line = synchronized(lock) {
             val file = logFile ?: return
+            var formatted = ""
             runCatching {
                 if (file.length() > MAX_LOG_SIZE_BYTES) {
                     file.writeText("--- Previous debug log rotated after reaching the size limit ---\n")
@@ -97,9 +105,12 @@ object HeadUnitLog {
                 val throwable = error?.let {
                     StringWriter().also { writer -> it.printStackTrace(PrintWriter(writer)) }.toString()
                 }.orEmpty()
-                file.appendText("${timestamp().format(Date())} $level/$tag: $message\n$throwable")
+                formatted = "${timestamp().format(Date())} $level/$tag: $message\n$throwable"
+                file.appendText(formatted)
             }
+            formatted
         }
+        if (enabled && line.isNotEmpty()) listener?.invoke(line)
     }
 
     private const val TAG = "HeadUnitLog"
