@@ -12,8 +12,8 @@ android {
         applicationId = "com.ssheadunit"
         minSdk = 24
         targetSdk = 35
-        versionCode = 25
-        versionName = "0.01.25"
+        versionCode = 26
+        versionName = "0.01.26"
 
         ndk {
             abiFilters += listOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64")
