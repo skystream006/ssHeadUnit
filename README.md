@@ -87,6 +87,29 @@ a v3 certificate carrying the extensions expected of a leaf TLS server certifica
 non-critical `extendedKeyUsage` (`serverAuth`) and `subjectAltName` — so that validators stricter
 than the Android Auto protocol itself are less likely to reject it.
 
+## Diagnosing the TLS handshake
+
+Certificate rejection is the most common reason a session stops before projecting, and on its own it
+is invisible: the phone simply stops answering. With **Settings → Debug logging** on, the records
+tunnelled inside the `SSL_HANDSHAKE` control messages are decoded, so the log shows
+
+* the head unit identity loaded from `headunit.p12`, before the handshake starts — subject, issuer,
+  serial, validity, key size and SHA-256 fingerprint, and whether it was generated or bundled;
+* every handshake message in the order it was sent, in both directions, so the point the exchange
+  stops is visible (`ClientHello`, `ServerHello`, `Certificate`, `ServerHelloDone`, …);
+* the contents of each `Certificate` message — the moment a certificate is actually exchanged —
+  described per chain entry by identity and fingerprint;
+* any `CertificateRequest`, which is the peer naming **what certificate it expects**: the key types
+  it accepts and the certificate authorities it is willing to chain to;
+* the negotiated protocol version and cipher suite once the handshake completes;
+* the TLS alert a peer sends when it refuses the identity. `bad_certificate`, `unknown_ca` and
+  `certificate_unknown` all mean the head unit certificate was not accepted, which the generated
+  self-signed identity cannot fix on its own.
+
+Records sent after `ChangeCipherSpec` are encrypted and are reported as such rather than decoded.
+The decoding only runs while debug logging is on, and a record that cannot be parsed is reported
+instead of ending the session.
+
 ## Usage
 
 1. Install the APK on the tablet and grant the USB permission when prompted.
@@ -120,8 +143,9 @@ rejected. Every stage of the session is now bounded by a timeout, so an adapter 
 answering ends the session with a reason on screen instead of hanging.
 
 If a connection still fails, turn on **Settings → Debug logging**. The USB descriptors, the selected
-interface, the negotiated protocol version, the session phase and the watchdog that fired are saved
-in the app's private debug log. Open **Settings → View debug log** to read, clear, or share it.
+interface, the negotiated protocol version, the session phase, the TLS handshake (see below) and the
+watchdog that fired are saved in the app's private debug log. Open **Settings → View debug log** to
+read, clear, or share it.
 
 ## Notes
 

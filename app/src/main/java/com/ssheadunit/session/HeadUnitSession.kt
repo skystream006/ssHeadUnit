@@ -56,6 +56,12 @@ interface HeadUnitListener {
     fun onAudioStop(channelId: Int) {}
     fun onLog(message: String) {}
 
+    /**
+     * Whether verbose diagnostics are wanted. Decoding the TLS handshake is skipped when false, so
+     * a session running without debug logging does no extra work.
+     */
+    fun isDiagnosticLoggingEnabled(): Boolean = true
+
     /** Unexpected but non fatal condition; always reaches logcat. */
     fun onWarning(message: String) {}
 }
@@ -82,7 +88,11 @@ class HeadUnitSession(
 
     private val decoder = FrameDecoder()
     private val assembler = MessageAssembler()
-    private val cryptor = SslCryptor(sslContext)
+    private val cryptor = SslCryptor(
+        sslContext,
+        log = { listener.onLog(it) },
+        logEnabled = { listener.isDiagnosticLoggingEnabled() }
+    )
     private val sendLock = Any()
     private val sessionIds = HashMap<Int, Int>()
 
@@ -214,7 +224,6 @@ class HeadUnitSession(
                 if (response.isNotEmpty()) sendControl(Messages.sslHandshake(response), encrypted = false)
                 if (cryptor.isHandshakeComplete && !authenticated) {
                     authenticated = true
-                    listener.onLog("TLS handshake complete")
                     sendControl(Messages.authComplete(), encrypted = false)
                     publishPhase(SessionPhase.DISCOVERY)
                     listener.onConnected()
