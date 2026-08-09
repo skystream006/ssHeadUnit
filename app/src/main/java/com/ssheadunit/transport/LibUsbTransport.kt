@@ -38,7 +38,7 @@ class LibUsbTransport private constructor(
                     clearHalt(outEndpoint)
                     result = LibUsb.nativeBulkWrite(handle, outEndpoint, data, offset, chunk, timeout(timeoutMs))
                 }
-                LibUsbAction.FATAL -> throw TransportException(failure("write", result))
+                LibUsbAction.FATAL -> throw TransportException(failure("write at offset $offset", result))
             }
             if (result < 0) throw TransportException(failure("write at offset $offset", result))
             if (result == 0) throw TransportException("USB write made no progress at offset $offset")
