@@ -34,6 +34,11 @@ object HeadUnitCredentials {
     const val PASSWORD_ASSET = "headunit.pwd"
     private val EMPTY_PASSWORD = CharArray(0)
 
+    enum class CertificateProfile {
+        SS_HEAD_UNIT,
+        CHRYSLER_PACIFICA,
+    }
+
     fun createSslContext(context: Context): SSLContext {
         val keyStore = KeyStore.getInstance("PKCS12")
         val generatedKeyStore = ensureCredentials(context)
@@ -64,21 +69,65 @@ object HeadUnitCredentials {
         if (generatedFile.exists()) return generatedFile
         if (hasBundledKeyStore(context)) return null
 
+        return writeGeneratedCredentials(context, CertificateProfile.SS_HEAD_UNIT, overwrite = false)
+    }
+
+    @Synchronized
+    fun replaceCredentials(context: Context, profile: CertificateProfile): File =
+        writeGeneratedCredentials(context, profile, overwrite = true)
+            ?: throw MissingCredentialsException("Unable to create $KEYSTORE_ASSET")
+
+    private fun writeGeneratedCredentials(
+        context: Context,
+        profile: CertificateProfile,
+        overwrite: Boolean,
+    ): File? {
+        val generatedFile = File(context.filesDir, KEYSTORE_ASSET)
+        if (!overwrite && generatedFile.exists()) return generatedFile
+        if (!overwrite && hasBundledKeyStore(context)) return null
+
         val temporaryFile = File(context.filesDir, "$KEYSTORE_ASSET.tmp")
         try {
             val keyPair = KeyPairGenerator.getInstance("RSA").apply { initialize(KEY_SIZE_BITS) }.generateKeyPair()
-            val certificate = createCertificate(keyPair.public.encoded, keyPair.private)
+            val certificate = createCertificate(keyPair.public.encoded, keyPair.private, profile)
             val keyStore = KeyStore.getInstance("PKCS12").apply { load(null, EMPTY_PASSWORD) }
             keyStore.setKeyEntry(KEY_ALIAS, keyPair.private, EMPTY_PASSWORD, arrayOf(certificate))
             FileOutputStream(temporaryFile).use { keyStore.store(it, EMPTY_PASSWORD) }
-            if (!temporaryFile.renameTo(generatedFile)) {
-                throw IOException("Unable to save $KEYSTORE_ASSET")
-            }
+            installGeneratedFile(temporaryFile, generatedFile, overwrite)
             return generatedFile
         } catch (e: Exception) {
             temporaryFile.delete()
             throw MissingCredentialsException("Unable to create $KEYSTORE_ASSET", e)
         }
+    }
+
+    private fun installGeneratedFile(temporaryFile: File, generatedFile: File, overwrite: Boolean) {
+        if (!overwrite) {
+            if (!temporaryFile.renameTo(generatedFile)) {
+                throw IOException("Unable to save $KEYSTORE_ASSET")
+            }
+            return
+        }
+
+        val backupFile = File(generatedFile.parentFile, "$KEYSTORE_ASSET.bak")
+        if (backupFile.exists() && !backupFile.delete()) {
+            throw IOException("Unable to prepare $KEYSTORE_ASSET replacement")
+        }
+
+        val hasBackup = generatedFile.exists()
+        if (hasBackup && !generatedFile.renameTo(backupFile)) {
+            throw IOException("Unable to back up existing $KEYSTORE_ASSET")
+        }
+
+        if (temporaryFile.renameTo(generatedFile)) {
+            backupFile.delete()
+            return
+        }
+
+        if (hasBackup && backupFile.exists() && !backupFile.renameTo(generatedFile)) {
+            throw IOException("Unable to save $KEYSTORE_ASSET; previous credentials remain at ${backupFile.name}")
+        }
+        throw IOException("Unable to save $KEYSTORE_ASSET")
     }
 
     /**
@@ -121,20 +170,25 @@ object HeadUnitCredentials {
         false
     }
 
-    private fun createCertificate(encodedPublicKey: ByteArray, privateKey: java.security.PrivateKey): X509Certificate {
+    private fun createCertificate(
+        encodedPublicKey: ByteArray,
+        privateKey: java.security.PrivateKey,
+        profile: CertificateProfile,
+    ): X509Certificate {
         val algorithm = sequence(objectIdentifier(SHA256_WITH_RSA_OID), nullValue())
-        val name = sequence(set(sequence(objectIdentifier(COMMON_NAME_OID), utf8String("ssHeadUnit"))))
-        val now = Calendar.getInstance(TimeZone.getTimeZone("UTC"))
-        val expires = (now.clone() as Calendar).apply { add(Calendar.YEAR, CERTIFICATE_VALIDITY_YEARS) }
+        val issuer = issuerName(profile)
+        val subject = subjectName(profile)
+        val notBefore = notBefore(profile)
+        val notAfter = notAfter(profile, notBefore)
         val tbsCertificate = sequence(
             explicit(0, integer(BigInteger.valueOf(2))),
-            integer(BigInteger(128, SecureRandom())),
+            integer(serialNumber(profile)),
             algorithm,
-            name,
-            sequence(utcTime(now), utcTime(expires)),
-            name,
+            issuer,
+            sequence(utcTime(notBefore), utcTime(notAfter)),
+            subject,
             encodedPublicKey,
-            explicit(3, sequence(*extensions())),
+            explicit(3, sequence(*extensions(subjectAlternativeName(profile)))),
         )
         val signature = Signature.getInstance("SHA256withRSA").apply {
             initSign(privateKey)
@@ -145,12 +199,70 @@ object HeadUnitCredentials {
             .generateCertificate(certificateBytes.inputStream()) as X509Certificate
     }
 
+    private fun serialNumber(profile: CertificateProfile): BigInteger =
+        when (profile) {
+            CertificateProfile.SS_HEAD_UNIT -> BigInteger(128, SecureRandom())
+            CertificateProfile.CHRYSLER_PACIFICA -> BigInteger("7bcd3456ef1290ab", 16)
+        }
+
+    private fun issuerName(profile: CertificateProfile): ByteArray =
+        when (profile) {
+            CertificateProfile.SS_HEAD_UNIT -> distinguishedName(
+                NameAttribute(COMMON_NAME_OID, "ssHeadUnit"),
+            )
+            CertificateProfile.CHRYSLER_PACIFICA -> distinguishedName(
+                NameAttribute(COUNTRY_NAME_OID, "US", printable = true),
+                NameAttribute(ORGANIZATION_NAME_OID, "Google LLC"),
+                NameAttribute(ORGANIZATIONAL_UNIT_NAME_OID, "Android"),
+                NameAttribute(COMMON_NAME_OID, "Google Automotive Services Production CA"),
+            )
+        }
+
+    private fun subjectName(profile: CertificateProfile): ByteArray =
+        when (profile) {
+            CertificateProfile.SS_HEAD_UNIT -> distinguishedName(
+                NameAttribute(COMMON_NAME_OID, "ssHeadUnit"),
+            )
+            CertificateProfile.CHRYSLER_PACIFICA -> distinguishedName(
+                NameAttribute(COUNTRY_NAME_OID, "US", printable = true),
+                NameAttribute(ORGANIZATION_NAME_OID, "Stellantis N.V."),
+                NameAttribute(ORGANIZATIONAL_UNIT_NAME_OID, "FCA US LLC Uconnect"),
+                NameAttribute(COMMON_NAME_OID, "com.google.android.automotive.fca.pacifica.prod"),
+            )
+        }
+
+    private fun notBefore(profile: CertificateProfile): Calendar =
+        when (profile) {
+            CertificateProfile.SS_HEAD_UNIT -> Calendar.getInstance(TimeZone.getTimeZone("UTC"))
+            // Matches the cloned Pacifica certificate validity exactly, including its fixed expiry.
+            CertificateProfile.CHRYSLER_PACIFICA -> utcCalendar(2024, Calendar.MARCH, 15, 0, 0, 0)
+        }
+
+    private fun notAfter(profile: CertificateProfile, notBefore: Calendar): Calendar =
+        when (profile) {
+            CertificateProfile.SS_HEAD_UNIT ->
+                (notBefore.clone() as Calendar).apply { add(Calendar.YEAR, CERTIFICATE_VALIDITY_YEARS) }
+            CertificateProfile.CHRYSLER_PACIFICA -> utcCalendar(2034, Calendar.MARCH, 14, 23, 59, 59)
+        }
+
+    private fun subjectAlternativeName(profile: CertificateProfile): String =
+        when (profile) {
+            CertificateProfile.SS_HEAD_UNIT -> "ssHeadUnit"
+            CertificateProfile.CHRYSLER_PACIFICA -> "com.google.android.automotive.fca.pacifica.prod"
+        }
+
+    private fun utcCalendar(year: Int, month: Int, day: Int, hour: Int, minute: Int, second: Int): Calendar =
+        Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply {
+            clear()
+            set(year, month, day, hour, minute, second)
+        }
+
     /**
      * Standard v3 extensions expected of a leaf TLS server certificate. Some head unit
      * validators (including third party wireless adapters) are stricter than the Android Auto
      * protocol requires and reject a certificate lacking them.
      */
-    private fun extensions(): Array<ByteArray> = arrayOf(
+    private fun extensions(subjectAlternativeName: String): Array<ByteArray> = arrayOf(
         extension(BASIC_CONSTRAINTS_OID, critical = true, value = sequence()),
         extension(
             KEY_USAGE_OID,
@@ -165,7 +277,7 @@ object HeadUnitCredentials {
         extension(
             SUBJECT_ALT_NAME_OID,
             critical = false,
-            value = sequence(generalNameDnsName("ssHeadUnit")),
+            value = sequence(generalNameDnsName(subjectAlternativeName)),
         ),
     )
 
@@ -203,6 +315,20 @@ object HeadUnitCredentials {
 
     private fun integer(value: BigInteger) = der(0x02, value.toByteArray())
 
+    private data class NameAttribute(val oid: String, val value: String, val printable: Boolean = false)
+
+    private fun distinguishedName(vararg attributes: NameAttribute): ByteArray =
+        sequence(
+            *attributes.map { attribute ->
+                val value = if (attribute.printable) {
+                    printableString(attribute.value)
+                } else {
+                    utf8String(attribute.value)
+                }
+                set(sequence(objectIdentifier(attribute.oid), value))
+            }.toTypedArray()
+        )
+
     private fun objectIdentifier(value: String): ByteArray {
         val parts = value.split('.').map(String::toLong)
         val encoded = mutableListOf<Byte>()
@@ -222,6 +348,8 @@ object HeadUnitCredentials {
     }
 
     private fun utf8String(value: String) = der(0x0C, value.toByteArray(Charsets.UTF_8))
+
+    private fun printableString(value: String) = der(0x13, value.toByteArray(Charsets.US_ASCII))
 
     private fun utcTime(value: Calendar): ByteArray {
         val formatter = SimpleDateFormat("yyMMddHHmmss'Z'", Locale.US).apply {
@@ -257,6 +385,9 @@ object HeadUnitCredentials {
     private const val KEY_SIZE_BITS = 2048
     private const val CERTIFICATE_VALIDITY_YEARS = 10
     private const val SHA256_WITH_RSA_OID = "1.2.840.113549.1.1.11"
+    private const val COUNTRY_NAME_OID = "2.5.4.6"
+    private const val ORGANIZATION_NAME_OID = "2.5.4.10"
+    private const val ORGANIZATIONAL_UNIT_NAME_OID = "2.5.4.11"
     private const val COMMON_NAME_OID = "2.5.4.3"
     private const val BASIC_CONSTRAINTS_OID = "2.5.29.19"
     private const val KEY_USAGE_OID = "2.5.29.15"
