@@ -8,6 +8,15 @@ import android.hardware.usb.UsbInterface
 import android.hardware.usb.UsbManager
 import com.ssheadunit.util.HeadUnitLog
 
+/** USB standard request code for CLEAR_FEATURE. */
+private const val USB_REQUEST_CLEAR_FEATURE = 1
+
+/** USB feature selector for ENDPOINT_HALT. */
+private const val USB_FEATURE_ENDPOINT_HALT = 0
+
+/** USB recipient field for an endpoint target. */
+private const val USB_RECIP_ENDPOINT = 0x02
+
 /**
  * Android Open Accessory Protocol (AOAP) helper.
  *
@@ -184,6 +193,7 @@ object Aoap {
 
         val connection = manager.openDevice(device)
             ?: throw TransportException("Unable to open USB device ${device.deviceName}")
+        HeadUnitLog.i(TAG, "Opened ${device.deviceName}")
         val iface: UsbInterface = device.getInterface(selected.index)
         val inAddress = selected.bulkIn.first().address
         val outAddress = selected.bulkOut.first().address
@@ -197,7 +207,31 @@ object Aoap {
             connection.close()
             throw TransportException("Unable to claim interface ${selected.index} on ${device.deviceName}")
         }
+        HeadUnitLog.i(TAG, "Claimed interface ${selected.index} on ${device.deviceName}")
+        // A freshly claimed AOAP endpoint can be left halted by the kernel driver that owned it a
+        // moment ago; clearing both up front avoids a burst of read/write failures before the
+        // session even starts.
+        clearHaltOnOpen(connection, input)
+        clearHaltOnOpen(connection, output)
         return UsbTransport(connection, iface, input, output)
+    }
+
+    /** Best effort halt clear performed right after claiming an interface; logs only on success. */
+    private fun clearHaltOnOpen(connection: UsbDeviceConnection, endpoint: UsbEndpoint) {
+        val result = runCatching {
+            connection.controlTransfer(
+                UsbConstants.USB_DIR_OUT or UsbConstants.USB_TYPE_STANDARD or USB_RECIP_ENDPOINT,
+                USB_REQUEST_CLEAR_FEATURE,
+                USB_FEATURE_ENDPOINT_HALT,
+                endpoint.address,
+                null,
+                0,
+                0
+            )
+        }.getOrDefault(-1)
+        if (result >= 0) {
+            HeadUnitLog.i(TAG, "Cleared halt on endpoint 0x%02x".format(endpoint.address))
+        }
     }
 
     private fun endpointAt(iface: UsbInterface, address: Int): UsbEndpoint? =
@@ -328,14 +362,5 @@ class UsbTransport(
 
         /** How many immediate read failures are tolerated before the link is declared dead. */
         const val MAX_CONSECUTIVE_ERRORS = 10
-
-        /** USB standard request code for CLEAR_FEATURE. */
-        const val USB_REQUEST_CLEAR_FEATURE = 1
-
-        /** USB feature selector for ENDPOINT_HALT. */
-        const val USB_FEATURE_ENDPOINT_HALT = 0
-
-        /** USB recipient field for an endpoint target. */
-        const val USB_RECIP_ENDPOINT = 0x02
     }
 }

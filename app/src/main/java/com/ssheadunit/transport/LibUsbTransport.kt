@@ -117,6 +117,15 @@ class LibUsbTransport private constructor(
                 return null
             }
             HeadUnitLog.i(TAG, "libusb claimed interface $interfaceNumber (in=0x%02x out=0x%02x)".format(inEndpoint, outEndpoint))
+            // A freshly claimed AOAP endpoint can be left in a halted state by the kernel driver
+            // that owned it a moment ago; clearing both endpoints up front avoids a burst of
+            // read/write failures before the session even starts.
+            if (LibUsb.nativeClearHalt(handle, inEndpoint) == LibUsb.SUCCESS) {
+                HeadUnitLog.i(TAG, "Cleared halt on in endpoint 0x%02x".format(inEndpoint))
+            }
+            if (LibUsb.nativeClearHalt(handle, outEndpoint) == LibUsb.SUCCESS) {
+                HeadUnitLog.i(TAG, "Cleared halt on out endpoint 0x%02x".format(outEndpoint))
+            }
             return LibUsbTransport(connection, handle, inEndpoint, outEndpoint)
         }
     }
