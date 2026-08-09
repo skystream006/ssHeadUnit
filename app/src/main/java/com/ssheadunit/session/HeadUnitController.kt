@@ -172,6 +172,8 @@ object HeadUnitController : HeadUnitListener {
         audioPlayer.stop(channelId)
     }
 
+    override fun isDiagnosticLoggingEnabled(): Boolean = HeadUnitLog.enabled
+
     override fun onLog(message: String) {
         HeadUnitLog.d(TAG, message)
     }

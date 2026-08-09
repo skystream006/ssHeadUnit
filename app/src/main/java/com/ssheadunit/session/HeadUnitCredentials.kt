@@ -1,6 +1,8 @@
 package com.ssheadunit.session
 
 import android.content.Context
+import com.ssheadunit.protocol.describeCertificate
+import com.ssheadunit.util.HeadUnitLog
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
@@ -42,6 +44,7 @@ object HeadUnitCredentials {
         } catch (e: IOException) {
             throw MissingCredentialsException("Unable to load $KEYSTORE_ASSET", e)
         }
+        logIdentity(keyStore, generated = generatedKeyStore != null)
         val keyManagerFactory = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm())
         keyManagerFactory.init(keyStore, password)
         return SSLContext.getInstance("TLSv1.2").apply {
@@ -76,6 +79,30 @@ object HeadUnitCredentials {
             temporaryFile.delete()
             throw MissingCredentialsException("Unable to create $KEYSTORE_ASSET", e)
         }
+    }
+
+    /**
+     * Records which head unit identity is about to be offered. A phone that refuses to project
+     * rejects this certificate, so the log has to name it before the handshake starts.
+     */
+    private fun logIdentity(keyStore: KeyStore, generated: Boolean) {
+        if (!HeadUnitLog.enabled) return
+        runCatching {
+            val source = if (generated) "generated" else "bundled $KEYSTORE_ASSET"
+            val aliases = keyStore.aliases().toList()
+            HeadUnitLog.i(TAG, "Head unit identity ($source): ${aliases.size} keystore entries")
+            aliases.forEach { alias ->
+                val chain = keyStore.getCertificateChain(alias).orEmpty()
+                if (chain.isEmpty()) {
+                    HeadUnitLog.i(TAG, "  \"$alias\" has no certificate chain")
+                }
+                chain.forEachIndexed { index, certificate ->
+                    val described = (certificate as? X509Certificate)?.let(::describeCertificate)
+                        ?: certificate.type
+                    HeadUnitLog.i(TAG, "  \"$alias\" certificate #$index: $described")
+                }
+            }
+        }.onFailure { HeadUnitLog.w(TAG, "Unable to describe the head unit identity: ${it.message}") }
     }
 
     private fun readPassword(context: Context): CharArray = try {
@@ -225,6 +252,7 @@ object HeadUnitCredentials {
 
     class MissingCredentialsException(message: String, cause: Throwable? = null) : Exception(message, cause)
 
+    private const val TAG = "HeadUnitCredentials"
     private const val KEY_ALIAS = "headunit"
     private const val KEY_SIZE_BITS = 2048
     private const val CERTIFICATE_VALIDITY_YEARS = 10

@@ -12,7 +12,19 @@ import javax.net.ssl.SSLEngineResult
  * tunnelled inside `SSL_HANDSHAKE` control messages and every later frame payload is encrypted
  * with the negotiated keys.
  */
-class SslCryptor(sslContext: SSLContext) {
+class SslCryptor(
+    sslContext: SSLContext,
+    /**
+     * Receives handshake diagnostics. Only called while the caller wants them, so the records are
+     * not decoded at all during a normal session.
+     */
+    private val log: ((String) -> Unit)? = null,
+    /**
+     * Checked before any record is decoded, so a session running without debug logging does no
+     * parsing work at all. Re-read each time because the setting can be toggled mid session.
+     */
+    private val logEnabled: () -> Boolean = { true }
+) {
 
     private val engine: SSLEngine = sslContext.createSSLEngine().apply {
         useClientMode = false
@@ -20,6 +32,12 @@ class SslCryptor(sslContext: SSLContext) {
         needClientAuth = false
         wantClientAuth = false
     }
+
+    private val incomingDescriber = TlsRecordDescriber("phone -> head unit")
+    private val outgoingDescriber = TlsRecordDescriber("head unit -> phone")
+
+    /** Guards against describing the completed handshake more than once. */
+    private var summaryLogged = false
 
     private val packetSize = engine.session.packetBufferSize
     private val applicationSize = engine.session.applicationBufferSize
@@ -31,6 +49,8 @@ class SslCryptor(sslContext: SSLContext) {
 
     /** Starts the handshake and returns the first records to send, if any. */
     fun startHandshake(): ByteArray {
+        // The certificate is only selected once the peer's hello arrives, so it cannot be named yet.
+        logSink()?.invoke("Starting TLS handshake as the TLS server; the phone must accept the head unit certificate")
         engine.beginHandshake()
         return handshake(null)
     }
@@ -39,7 +59,10 @@ class SslCryptor(sslContext: SSLContext) {
      * Feeds handshake records received from the phone and returns the records to send back.
      */
     fun handshake(received: ByteArray?): ByteArray {
-        if (received != null && received.isNotEmpty()) append(received)
+        if (received != null && received.isNotEmpty()) {
+            describe(incomingDescriber, received)
+            append(received)
+        }
         var output = ByteBuffer.allocate(packetSize * 4)
         val appBuffer = ByteBuffer.allocate(applicationSize)
         loop@ while (true) {
@@ -66,7 +89,10 @@ class SslCryptor(sslContext: SSLContext) {
         }
         compactInbound()
         output.flip()
-        return ByteArray(output.remaining()).also { output.get(it) }
+        val response = ByteArray(output.remaining()).also { output.get(it) }
+        if (response.isNotEmpty()) describe(outgoingDescriber, response)
+        logHandshakeSummary()
+        return response
     }
 
     /** Encrypts a frame payload. */
@@ -100,6 +126,54 @@ class SslCryptor(sslContext: SSLContext) {
 
     fun close() {
         runCatching { engine.closeOutbound() }
+    }
+
+    private fun describe(describer: TlsRecordDescriber, records: ByteArray) {
+        val sink = logSink() ?: return
+        describer.describe(records).forEach(sink)
+    }
+
+    /** The sink to report to, or null when diagnostics are not wanted. */
+    private fun logSink(): ((String) -> Unit)? = log?.takeIf { logEnabled() }
+
+    /**
+     * Reports the negotiated parameters and the certificates both sides ended up with, once. A
+     * peer that accepted the head unit identity gets this far; one that refused it sends an alert
+     * instead, which the record describer reports.
+     */
+    private fun logHandshakeSummary() {
+        val sink = logSink() ?: return
+        if (summaryLogged || !isHandshakeComplete) return
+        summaryLogged = true
+        val session = engine.session
+        sink("TLS handshake complete: ${session.protocol} ${session.cipherSuite}")
+        sink("Head unit presented ${describeLocalCertificates()}")
+        sink("Phone presented ${describePeerCertificates()}")
+    }
+
+    /** The chain this head unit offers, i.e. the identity the phone has to accept. */
+    private fun describeLocalCertificates(): String = runCatching {
+        val chain = engine.session.localCertificates
+        if (chain == null || chain.isEmpty()) return "no certificate (no key manager matched)"
+        chain.mapIndexed { index, certificate ->
+            "certificate #$index: ${describeEncodedCertificate(certificate.encoded)}"
+        }.joinToString("; ")
+    }.getOrElse { "a certificate chain that could not be described (${it.message ?: it.javaClass.simpleName})" }
+
+    private fun describePeerCertificates(): String = runCatching {
+        val chain = engine.session.peerCertificates
+        if (chain.isEmpty()) {
+            "no certificate"
+        } else {
+            chain.mapIndexed { index, certificate ->
+                "certificate #$index: ${describeEncodedCertificate(certificate.encoded)}"
+            }.joinToString("; ")
+        }
+    }.getOrElse {
+        // peerCertificates throws when the peer was never authenticated, which is the normal case
+        // here because client authentication is not requested. Report the actual reason so a
+        // different cause is not misattributed.
+        "no certificate (${it.message ?: it.javaClass.simpleName})"
     }
 
     private fun append(data: ByteArray) {
