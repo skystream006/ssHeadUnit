@@ -146,9 +146,6 @@ object HeadUnitCredentials {
         false
     }
 
-    private fun createCertificate(encodedPublicKey: ByteArray, privateKey: java.security.PrivateKey): X509Certificate =
-        createCertificate(encodedPublicKey, privateKey, CertificateProfile.SS_HEAD_UNIT)
-
     private fun createCertificate(
         encodedPublicKey: ByteArray,
         privateKey: java.security.PrivateKey,
