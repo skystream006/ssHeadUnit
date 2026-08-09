@@ -216,7 +216,7 @@ object Aoap {
         return UsbTransport(connection, iface, input, output)
     }
 
-    /** Best effort halt clear performed right after claiming an interface; logs only on success. */
+    /** Best effort halt clear performed right after claiming an interface; silently ignored on failure, logs only on success. */
     private fun clearHaltOnOpen(connection: UsbDeviceConnection, endpoint: UsbEndpoint) {
         val result = runCatching {
             connection.controlTransfer(

@@ -138,6 +138,10 @@ Java_com_ssheadunit_transport_LibUsb_nativeOpen(JNIEnv *env, jclass clazz, jint 
                     "libusb_detach_kernel_driver(%d) failed: %s",
                     interface_number, libusb_error_name(detach_result));
             }
+        } else if (active < 0) {
+            __android_log_print(ANDROID_LOG_WARN, LOG_TAG,
+                "libusb_kernel_driver_active(%d) failed: %s",
+                interface_number, libusb_error_name(active));
         }
     }
     if (result != LIBUSB_SUCCESS) {
