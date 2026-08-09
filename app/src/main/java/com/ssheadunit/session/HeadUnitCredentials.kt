@@ -240,7 +240,15 @@ object HeadUnitCredentials {
 
     private fun utf8String(value: String) = der(0x0C, value.toByteArray(Charsets.UTF_8))
 
-    private fun printableString(value: String) = der(0x13, value.toByteArray(Charsets.US_ASCII))
+    private fun printableString(value: String): ByteArray {
+        require(value.all(::isPrintableStringCharacter)) { "Invalid PrintableString value: $value" }
+        return der(0x13, value.toByteArray(Charsets.US_ASCII))
+    }
+
+    private fun isPrintableStringCharacter(char: Char): Boolean = char.isLetterOrDigit() || when (char) {
+        ' ', '\'', '(', ')', '+', ',', '-', '.', '/', ':', '=', '?' -> true
+        else -> false
+    }
 
     private fun utcTime(value: Calendar): ByteArray {
         val formatter = SimpleDateFormat("yyMMddHHmmss'Z'", Locale.US).apply {
