@@ -216,7 +216,7 @@ object Aoap {
         return UsbTransport(connection, iface, input, output)
     }
 
-    /** Best effort halt clear performed right after claiming an interface; silently ignored on failure, logs only on success. */
+    /** Best effort halt clear performed right after claiming an interface; both outcomes are logged. */
     private fun clearHaltOnOpen(connection: UsbDeviceConnection, endpoint: UsbEndpoint) {
         val result = runCatching {
             connection.controlTransfer(
@@ -228,9 +228,13 @@ object Aoap {
                 0,
                 CONTROL_TIMEOUT_MS
             )
+        }.onFailure {
+            HeadUnitLog.w(TAG, "Unable to clear halt on endpoint 0x%02x: ${it.message}".format(endpoint.address))
         }.getOrDefault(-1)
         if (result >= 0) {
             HeadUnitLog.i(TAG, "Cleared halt on endpoint 0x%02x".format(endpoint.address))
+        } else {
+            HeadUnitLog.w(TAG, "Failed to clear halt on endpoint 0x%02x (result=$result)".format(endpoint.address))
         }
     }
 
@@ -335,12 +339,15 @@ class UsbTransport(
         if (closed) return
         closed = true
         runCatching { connection.releaseInterface(iface) }
+            .onSuccess { HeadUnitLog.i(TAG, "Released interface ${iface.id}") }
+            .onFailure { HeadUnitLog.w(TAG, "Unable to release interface ${iface.id}: ${it.message}") }
         runCatching { connection.close() }
+            .onFailure { HeadUnitLog.w(TAG, "Unable to close USB connection: ${it.message}") }
     }
 
-    /** Best effort recovery from a halted bulk endpoint. */
+    /** Best effort recovery from a halted bulk endpoint; both outcomes are logged. */
     private fun clearHalt(endpoint: UsbEndpoint) {
-        runCatching {
+        val result = runCatching {
             connection.controlTransfer(
                 UsbConstants.USB_DIR_OUT or UsbConstants.USB_TYPE_STANDARD or USB_RECIP_ENDPOINT,
                 USB_REQUEST_CLEAR_FEATURE,
@@ -350,6 +357,13 @@ class UsbTransport(
                 0,
                 0
             )
+        }.onFailure {
+            HeadUnitLog.w(TAG, "Unable to clear halt on endpoint 0x%02x: ${it.message}".format(endpoint.address))
+        }.getOrDefault(-1)
+        if (result >= 0) {
+            HeadUnitLog.i(TAG, "Cleared halt on endpoint 0x%02x".format(endpoint.address))
+        } else {
+            HeadUnitLog.w(TAG, "Failed to clear halt on endpoint 0x%02x (result=$result)".format(endpoint.address))
         }
     }
 
